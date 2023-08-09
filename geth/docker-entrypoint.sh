@@ -104,10 +104,6 @@ if [ -f /var/lib/goethereum/prune-marker ]; then
     echo "Geth is an archive node. Not attempting to prune: Aborting."
     exit 1
   fi
-  if [ -f /var/lib/goethereum/is-pbss ]; then
-    echo "Geth is using PBSS. Pruning is neither needed nor supported. Aborting."
-    exit 1
-  fi
 # Word splitting is desired for the command line parameters
 # shellcheck disable=SC2086
   exec "$@" ${__network} ${EL_EXTRAS} snapshot prune-state
