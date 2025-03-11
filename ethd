@@ -6125,6 +6125,210 @@ config() {
 }
 
 
+debug-info() {
+  local is_configured=0
+  local warn=0
+  local error=0
+  local prom_perm
+  local ssv_perm
+  local prom_other_perm
+  local ssv_other_perm
+  local env_owner
+  local cl=""
+  local el=""
+  local vc=""
+  local ssv=""
+  local ext_network=""
+
+  echo
+  echo "Privetstvuyu, tovarishch"
+  echo "Let's see how your ${__project_name} installation is doing"
+  echo
+
+  if [[ -n "$(${__as_owner} git status --porcelain)" ]]; then
+    echo "⚠️  Your installation may have locally conflicting files, which can keep \"./ethd update\" from working well."
+    echo "Run \"git status\" to see which those are. If \"git pull\" fails, resolve the conflicts."
+    (( ++warn ))
+  else
+    echo "✅ Your installation has no locally conflicting files."
+  fi
+
+  echo
+  echo "ℹ️  You are on commit hash $(git rev-parse --short HEAD)"
+  if [[ "$(git rev-parse --short HEAD)" = "$(git rev-parse --short origin/main)" ]]; then
+    echo "This is the latest commit from https://github.com/eth-educators/eth-docker"
+  else
+    echo "This is not the latest commit from https://github.com/eth-educators/eth-docker"
+  fi
+
+  echo
+  echo "ℹ️  Your Docker version is $(docker --version)"
+  echo "ℹ️  Your Docker Compose version is $(docker compose version)"
+
+  echo
+  echo "ℹ️  The directory $(realpath .) for ${__project_name} is owned by ${__owner}"
+
+  if [[ -f ${__env_file} ]]; then
+    is_configured=1
+# shellcheck disable=SC2012
+    env_owner=$(ls -ld ${__env_file} | awk '{print $3}')
+    if [[ "${__owner}" = "${env_owner}" ]]; then
+      echo "✅ ${__env_file} is also owned by ${__owner}, as expected."
+    else
+      echo "❌ ${__env_file} is owned by ${env_owner}. This is likely to cause problems."
+      (( ++ error ))
+    fi
+  fi
+
+  if [[ "$OSTYPE" = "darwin"* ]]; then
+    prom_perm=$(stat -f "%Mp%Lp" prometheus)
+    ssv_perm=$(stat -f "%Mp%Lp" ssv-config)
+  else
+    prom_perm=$(stat -c "%a" prometheus)
+    ssv_perm=$(stat -c "%a" ssv-config)
+  fi
+  prom_other_perm=${prom_perm: -1}
+  ssv_other_perm=${ssv_perm: -1}
+  if [[ "${prom_other_perm}" -eq 5 || "${prom_other_perm}" -eq 7 ]]; then
+    echo "✅ The directory prometheus is readable by everyone"
+  else
+    echo "❌ The directory prometheus has permissions ${prom_perm}, which are not be readable by everyone."
+    (( ++ error ))
+  fi
+  if [[ "${ssv_other_perm}" -eq 5 || "${ssv_other_perm}" -eq 7 ]]; then
+    echo "✅ The directory ssv-config is readable by everyone"
+  else
+    echo "❌ The directory ssv-config has permissions ${ssv_perm}, which are not be readable by everyone."
+    (( ++ error ))
+  fi
+
+  echo
+  if [[ "${is_configured}" -eq 0 ]]; then
+    echo "ℹ️  Eth Docker has not yet been configured"
+  else
+    echo "ℹ️  Eth Docker has been configured"
+    case "${COMPOSE_FILE}" in
+      *lighthouse.yml*)
+        cl="Lighthouse"
+        vc="Lighthouse"
+        ;;
+      *lighthouse-cl-only*)
+        cl="Lighthouse"
+        ;;
+      *lodestar.yml*)
+        cl="Lodestar"
+        vc="Lodestar"
+        ;;
+      *lodestar-cl-only*)
+        cl="Lodestar"
+        ;;
+      *prysm.yml*)
+        cl="Prysm"
+        vc="Prysm"
+        ;;
+      *prysm-cl-only*)
+        cl="Prysm"
+        ;;
+      *nimbus.yml*)
+        cl="Nimbus"
+        vc="Nimbus"
+        ;;
+      *nimbus-allin1.yml*)
+        cl="Nimbus-allin1"
+        vc="Nimbus-allin1"
+        ;;
+      *nimbus-cl-only*)
+        cl="Nimbus"
+        ;;
+      *teku.yml*)
+        cl="Teku"
+        vc="Teku"
+        ;;
+      *teku-allin1.yml*)
+        cl="Teku-allin1"
+        vc="Teku-allin1"
+        ;;
+      *teku-cl-only*)
+        cl="Teku"
+        ;;
+      *grandine-allin1.yml*)
+        cl="Grandine-allin1"
+        vc="Grandine-allin1"
+        ;;
+      *grandine-cl-only*)
+        cl="Grandine"
+        ;;
+      *grandine-plugin-allin1.yml*)
+        cl="Grandine-plugin-allin1"
+        vc="Grandine-plugin-allin1"
+        ;;
+      *grandine-plugin.yml*)
+        cl="Grandine-plugin"
+        ;;
+      *caplin.yml*)
+        cl="Caplin"
+        ;;
+      *)
+        cl=""
+        ;;
+    esac
+    case "${COMPOSE_FILE}" in
+      *geth.yml*)
+        el="Geth"
+        ;;
+      *reth.yml*)
+        el="Reth"
+        ;;
+      *besu.yml*)
+        el="Besu"
+        ;;
+      *nethermind.yml*)
+        el="Nethermind"
+        ;;
+      *erigon.yml*)
+        el="Erigon"
+        ;;
+      *nimbus-el.yml*)
+        el="Nimbus-EL"
+        ;;
+      *ethrex.yml*)
+        el="EthRex"
+        ;;
+      *)
+        el=""
+        ;;
+    esac
+    case "${COMPOSE_FILE}" in
+      *lighthouse-vc-only*)
+        vc="Lighthouse"
+        ;;
+      *lodestar-vc-only*)
+        vc="Lodestar"
+        ;;
+      *prysm-vc-only*)
+        vc="Prysm"
+        ;;
+      *nimbus-vc-only*)
+        vc="Nimbus"
+        ;;
+      *teku-vc-only*)
+        vc="Teku"
+        ;;
+      *vero-vc-only*)
+        vc="Vero"
+        ;;
+    esac
+  fi
+
+  echo
+  if [[ "${warn}" -eq 0 && "${error}" -eq 0 ]]; then
+    echo "No errors or warnings found. Good job!"
+  else
+    echo "There were ${error} errors and ${warn} warnings detected."
+  fi
+}
+
+
 version() {
   local var
   local w3s_exec=""
@@ -6420,6 +6624,8 @@ __full_help() {
   echo "    show Docker volume space usage"
   echo "  attach-geth"
   echo "    launches an interactive geth attach repl"
+  echo "  debug-info"
+  echo "    print facts about this installation of ${__project_name}, to assist in troubleshooting."
   echo "  help"
   echo "    print this help screen"
   echo
@@ -6555,7 +6761,7 @@ if ! __docompose --help >/dev/null 2>&1; then
 fi
 
 case "${__command}" in
-  help|config|cmd|terminate)  # Commands that can be run without .env existing
+  help|config|cmd|terminate|debug-info)  # Commands that can be run without .env existing
     ${__command} "$@"
     exit 0
     ;;
