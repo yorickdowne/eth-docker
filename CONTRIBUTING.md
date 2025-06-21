@@ -11,6 +11,6 @@ This repo uses a squash-and-merge workflow to avoid extra merge commits. Create 
 and work on this branch, then offer a PR from there.
 
 If you end up working on `main`, you can create an `upstream` remote with
-`git remote add upstream https://github.com/eth-educators/eth-docker.git`, and create a git alias with
+`git remote add upstream https://github.com/ethstaker/eth-docker.git`, and create a git alias with
 `git config --global alias.push-clean '!git fetch upstream main && git rebase upstream/main && git push -f'`. You can
 then `git push-clean` to your fork before opening a PR.

@@ -1346,6 +1346,12 @@ __env_migrate() {
         if [[ "${__var}" = "SIREN_DOCKER_REPO" && "${__value}" = "sigmaprime/siren" ]]; then  # Siren new repo
           __value="sigp/siren"
         fi
+        if [[ "${__var}" = "DEPCLI_DOCKER_REPO" && "${__value}" = "ghcr.io/eth-educators/ethstaker-deposit-cli" ]]; then  # Deposit CLI new repo
+          __value="ghcr.io/ethstaker/ethstaker-deposit-cli"
+        fi
+        if [[ "${__var}" = "DEPCLI_SRC_REPO" && "${__value}" = "https://github.com/eth-educators/ethstaker-deposit-cli" ]]; then  # Deposit CLI new repo
+          __value="https://github.com/ethstaker/ethstaker-deposit-cli"
+        fi
       fi
       # Handle & in GRAFFITI gracefully, as well as multi-line
       __update_value_in_env "${__var}" "$__value" "${__env_file}"
@@ -4668,7 +4674,7 @@ __full_help() {
   echo "    shows logs only for execution service"
   echo
   echo "✍️ Give feedback and report issues on GitHub:"
-  echo "  * https://github.com/eth-educators/eth-docker"
+  echo "  * https://github.com/ethstaker/eth-docker"
   echo "🤗 Get support on Discord:"
   echo "  * http://discord.gg/ethstaker"
 }
