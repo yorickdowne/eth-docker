@@ -15,30 +15,32 @@ shopt -s extglob
 case "$CLIENT" in
   *prysm* )
     #  prysm_small
-    __url='https://docs.prylabs.network/assets/grafana-dashboards/small_amount_validators.json'
+    __url='https://www.offchainlabs.com/prysm/docs/assets/files/small_amount_validators-372a4e8caa631260e6c951d4d81c3283.json/'
     __file='/etc/grafana/provisioning/dashboards/prysm_small.json'
-    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Prysm Dashboard"' >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Prysm Dashboard"' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     #  prysm_more_10
-    __url='https://docs.prylabs.network/assets/grafana-dashboards/big_amount_validators.json'
+    __url='https://www.offchainlabs.com/prysm/docs/assets/files/big_amount_validators-0ed1a1ead364ced51d5d92ddc19db229.json/'
     __file='/etc/grafana/provisioning/dashboards/prysm_big.json'
-    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Prysm Dashboard Many Validators"' >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Prysm Dashboard Many Validators"' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *lighthouse* )
     #  lighthouse_summary
     __url='https://raw.githubusercontent.com/sigp/lighthouse-metrics/master/dashboards/Summary.json'
     __file='/etc/grafana/provisioning/dashboards/lighthouse_summary.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Lighthouse Summary"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     #  lighthouse_validator_client
     __url='https://raw.githubusercontent.com/sigp/lighthouse-metrics/master/dashboards/ValidatorClient.json'
     __file='/etc/grafana/provisioning/dashboards/lighthouse_validator_client.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Lighthouse Validator Client"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     # lighthouse_validator_monitor
     __url='https://raw.githubusercontent.com/sigp/lighthouse-metrics/master/dashboards/ValidatorMonitor.json'
     __file='/etc/grafana/provisioning/dashboards/lighthouse_validator_monitor.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Lighthouse Validator Monitor"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *teku* )
     #  teku_overview
@@ -46,46 +48,51 @@ case "$CLIENT" in
     __revision=$(wget -t 3 -T 10 -qO - https://grafana.com/api/dashboards/${__id} | jq .revision)
     __url="https://grafana.com/api/dashboards/${__id}/revisions/${__revision}/download"
     __file='/etc/grafana/provisioning/dashboards/teku_overview.json'
-    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Teku Overview"' >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Teku Overview"' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *nimbus* )
     #  nimbus_dashboard
     __url='https://raw.githubusercontent.com/status-im/nimbus-eth2/master/grafana/beacon_nodes_Grafana_dashboard.json'
     __file='/etc/grafana/provisioning/dashboards/nimbus_dashboard.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Nimbus Dashboard"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS-PROXY}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' \
+      | jq 'walk(if . == "${DS_PROMETHEUS-PROXY}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *lodestar* )
     #  lodestar summary
     __url='https://raw.githubusercontent.com/ChainSafe/lodestar/stable/dashboards/lodestar_summary.json'
     __file='/etc/grafana/provisioning/dashboards/lodestar_summary.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Lodestar Dashboard"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' \
-        | jq '.templating.list[3].query |= "consensus" | .templating.list[4].query |= "validator"' \
-        | jq 'walk(if . == "prometheus_local" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' \
+      | jq '.templating.list[3].query |= "consensus" | .templating.list[4].query |= "validator"' \
+      | jq 'walk(if . == "prometheus_local" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *vero* )
     #  vero detailed
     __url='https://raw.githubusercontent.com/serenita-org/vero/refs/heads/master/grafana/vero-detailed.json'
     __file='/etc/grafana/provisioning/dashboards/vero-detailed.json'
-    wget -t 3 -T 10 -qcO - "${__url}" | jq 'walk(if . == "${datasource}" then "Prometheus" else . end)' >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq 'walk(if . == "${datasource}" then "Prometheus" else . end)' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     #  vero simple
     __url='https://raw.githubusercontent.com/serenita-org/vero/refs/heads/master/grafana/vero-simple.json'
     __file='/etc/grafana/provisioning/dashboards/vero-simple.json'
-    wget -t 3 -T 10 -qcO - "${__url}" | jq 'walk(if . == "${datasource}" then "Prometheus" else . end)' >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq 'walk(if . == "${datasource}" then "Prometheus" else . end)' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *geth* )
     # geth_dashboard
     __url='https://gist.githubusercontent.com/karalabe/e7ca79abdec54755ceae09c08bd090cd/raw/3a400ab90f9402f2233280afd086cb9d6aac2111/dashboard.json'
     __file='/etc/grafana/provisioning/dashboards/geth_dashboard.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Geth Dashboard"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *erigon* )
     # erigon_dashboard
     __url='https://raw.githubusercontent.com/ledgerwatch/erigon/devel/cmd/prometheus/dashboards/erigon.json'
     __file='/etc/grafana/provisioning/dashboards/erigon_dashboard.json'
-    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Erigon Dashboard"' | jq '.uid = "YbLNLr6Mz"' >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Erigon Dashboard"' | jq '.uid = "YbLNLr6Mz"' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *besu* )
     # besu_dashboard
@@ -94,20 +101,26 @@ case "$CLIENT" in
     __url="https://grafana.com/api/dashboards/${__id}/revisions/${__revision}/download"
     __file='/etc/grafana/provisioning/dashboards/besu_dashboard.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Besu Dashboard"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *reth* )
     # reth_dashboard
     __url='https://raw.githubusercontent.com/paradigmxyz/reth/main/etc/grafana/dashboards/overview.json'
     __file='/etc/grafana/provisioning/dashboards/reth_dashboard.json'
     wget -t 3 -T 10 -qcO - "${__url}" | jq '.title = "Reth Dashboard"' \
-        | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+      | jq 'walk(
+          if . == "${DS_PROMETHEUS}" then "Prometheus"
+          elif . == "${VAR_INSTANCE_LABEL}" then "execution"
+          else .
+          end
+        )' >"${__file}"
     ;;&
   *nethermind* )
     # nethermind_dashboard
     __url='https://raw.githubusercontent.com/NethermindEth/metrics-infrastructure/master/grafana/provisioning/dashboards/nethermind.json'
     __file='/etc/grafana/provisioning/dashboards/nethermind_dashboardv2.json'
-    wget -t 3 -T 10 -qcO - "${__url}" >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     # uid changed, removing this may undo the damage
     if [ -f "/etc/grafana/provisioning/dashboards/nethermind_dashboard.json" ]; then
       rm "/etc/grafana/provisioning/dashboards/nethermind_dashboard.json"
@@ -125,22 +138,50 @@ case "$CLIENT" in
     # SSV Operational Dashboard
     __url='https://docs.ssv.network/files/SSV-Operational-dashboard.json'
     __file='/etc/grafana/provisioning/dashboards/ssv_operational_dashboard.json'
-    wget -t 3 -T 10 -qcO - "${__url}" >"${__file}"
+    wget -t 3 -T 10 -qcO - "${__url}" | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
     ;;&
   *lido-obol.yml* )
     # Lido Obol Dashboard
-    __url_charon='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/dash_charon_overview.json'
-    __file_charon='/etc/grafana/provisioning/dashboards/charon.json'
-    wget -t 3 -T 10 -qcO - "${__url_charon}" | sed 's/"uid": "prometheus"/"uid": "PBFA97CFB590B2093"/g' >"${__file_charon}"
-    __url_single_node='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/single_node_dashboard.json'
-    __file_single_node='/etc/grafana/provisioning/dashboards/single_node_dashboard.json'
-    wget -t 3 -T 10 -qcO - "${__url_single_node}" | sed 's/"uid": "prometheus"/"uid": "PBFA97CFB590B2093"/g' >"${__file_single_node}"
-    __url_validator_ejector='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/validator_ejector_overview.json'
-    __file_validator_ejector='/etc/grafana/provisioning/dashboards/validator_ejector_overview.json'
-    wget -t 3 -T 10 -qcO - "${__url_validator_ejector}" | sed 's/"uid": "prometheus"/"uid": "PBFA97CFB590B2093"/g' >"${__file_validator_ejector}"
-    __url_logs='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/logs_dashboard.json'
-    __file_logs='/etc/grafana/provisioning/dashboards/logs_dashboard.json'
-    wget -t 3 -T 10 -qcO - "${__url_logs}" | sed 's/"uid": "loki"/"uid": "P8E80F9AEF21F6940"/g' >"${__file_logs}"
+    __url='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/dash_charon_overview.json'
+    __file='/etc/grafana/provisioning/dashboards/charon.json'
+    wget -t 3 -T 10 -qcO - "${__url}" \
+      | jq 'walk(
+          if (type == "object" and .datasource? and .datasource.uid? == "prometheus")
+          then .datasource.uid = "Prometheus"
+          else .
+          end
+        )' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+    __url='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/single_node_dashboard.json'
+    __file='/etc/grafana/provisioning/dashboards/single_node_dashboard.json'
+    wget -t 3 -T 10 -qcO - "${__url}" \
+      | jq 'walk(
+          if (type == "object" and .datasource? and .datasource.uid? == "prometheus")
+          then .datasource.uid = "Prometheus"
+          else .
+          end
+        )' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+    __url='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/validator_ejector_overview.json'
+    __file='/etc/grafana/provisioning/dashboards/validator_ejector_overview.json'
+    wget -t 3 -T 10 -qcO - "${__url}" \
+      | jq 'walk(
+          if (type == "object" and .datasource? and .datasource.uid? == "prometheus")
+          then .datasource.uid = "Prometheus"
+          else .
+          end
+        )' \
+      | jq 'walk(if . == "${DS_PROMETHEUS}" then "Prometheus" else . end)' >"${__file}"
+    __url='https://raw.githubusercontent.com/ObolNetwork/lido-charon-distributed-validator-node/main/grafana/dashboards/logs_dashboard.json'
+    __file='/etc/grafana/provisioning/dashboards/logs_dashboard.json'
+    wget -t 3 -T 10 -qcO - "${__url}" \
+      | jq 'walk(
+          if (type == "object" and .datasource? and .datasource.uid? == "loki")
+          then .datasource.uid = "Loki"
+          else .
+          end
+        )' \
+      | jq 'walk(if . == "${DS_LOKI}" then "Loki" else . end)' >"${__file}"
     ;;&
   !(*grafana-rootless*) )
       # cadvisor and node exporter dashboard
