@@ -1778,6 +1778,47 @@ reset to defaults."
 }
 
 
+__verify_ancient_dir() {
+  if [ -z "$1" ]; then
+    return 1
+  fi
+  local __dir="$1"
+
+  if [ ! -d "${__dir}" ]; then
+    echo "ANCIENT_DIR ${__dir} is not a directory. This is a configuration error."
+    return 1
+  fi
+
+  local __entries
+  if ! mapfile -t __entries < <(${__auto_sudo} find "${__dir}" -mindepth 1 -maxdepth 1 -exec basename {} \;); then
+    echo "ANCIENT_DIR ${__dir} contents could not be listed. This is unexpected and may be a configuration error, or a bug."
+    return 1
+  fi
+
+  # Check if all entries are files - this is Reth
+  local __all_files=true
+  for __entry in "${__entries[@]}"; do
+    if [[ -d "${__dir}/${__entry}" ]]; then
+      __all_files=false
+      break
+    fi
+  done
+
+  if [ "${__all_files}" = "true" ]; then
+    return 0
+  else
+    # Check for exactly two directories: 'chain' and 'state' - this is Geth
+    if [[ ${#__entries[@]} -eq 2 ]] && \
+       [[ -d "${__dir}/chain" && -d "${__dir}/state" ]]; then
+      return 0
+    fi
+  fi
+
+   echo "ANCIENT_DIR ${__dir} looks like neither a Geth nor Reth directory: Leaving it alone out of caution"
+   return 1
+}
+
+
 resync-execution() {
 # Check for EL client
   __var="COMPOSE_FILE"
@@ -1851,6 +1892,12 @@ resync-execution() {
   fi
   if [ -n "${__volume_id}" ]; then
     __dodocker volume rm "${__volume_id}"
+  fi
+  __var="ANCIENT_DIR"
+  __get_value_from_env "${__var}" "${__env_file}" "__value"
+  if __verify_ancient_dir "${__value}"; then
+    echo "Removing contents of ancient/static directory ${__value}"
+    ${__auto_sudo} rm -rf "${__value%/}/"*
   fi
   echo
   echo "${__el_client} stopped and database deleted."
