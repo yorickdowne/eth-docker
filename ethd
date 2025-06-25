@@ -4331,8 +4331,8 @@ config() {
 (right-click to paste)" 10 60 3>&1 1>&2 2>&3)
     __obol_prom_remote_token=$(whiptail --title "Obol prometheus" --inputbox "Put Obol Prometheus remote write token \
 (right-click to paste)" 10 60 3>&1 1>&2 2>&3)
-    cat ./prometheus/obol-prom.yml > ./prometheus/custom-prom.yml
-    sed -i'.original' "s|      credentials: OBOL_PROM_REMOTE_WRITE_TOKEN|      credentials: ${__obol_prom_remote_token}|" ./prometheus/custom-prom.yml
+    cat ./prometheus/obol-prom.yml.sample > ./prometheus/custom-prom.yml
+    sed -i'.original' "s|      credentials: <PROM_REMOTE_WRITE_TOKEN>|      credentials: ${__obol_prom_remote_token}|" ./prometheus/custom-prom.yml
     rm -f ./prometheus/custom-prom.yml.original
   fi
 
