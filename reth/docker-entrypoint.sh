@@ -82,29 +82,20 @@ fi
 
 if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Reth archive node without pruning"
+  __prune=""
+elif [ "${MINIMAL_NODE}" = "true" ]; then
+   echo "Reth minimal node with pre-merge history expiry"
+  __prune="--block-interval 5 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 100064"
+  case ${NETWORK} in
+    mainnet ) __prune+=" --prune.bodies.pre-merge --prune.receipts.before 15537394";;
+    sepolia ) __prune+=" --prune.bodies.pre-merge --prune.receipts.before 1450409";;
+    * ) echo "${NETWORK} has no pre-merge blocks, this will behave identical to a full node"; __prune+=" --prune.receipts.before 0";;
+  esac
+  echo "Pruning parameters: ${__prune}"
 else
-  if [ ! -f "/var/lib/reth/reth.toml" ]; then  # Configure ssv, rocketpool, stakewise contracts
-# Word splitting is desired for the command line parameters
-# shellcheck disable=SC2086
-    reth init ${__network} --datadir /var/lib/reth ${__static}
-    cat <<EOF >> /var/lib/reth/reth.toml
-
-[prune]
-block_interval = 5
-
-[prune.segments]
-sender_recovery = "full"
-
-[prune.segments.receipts]
-before = 0
-
-[prune.segments.account_history]
-distance = 10064
-
-[prune.segments.storage_history]
-distance = 10064
-EOF
-  fi
+   echo "Reth full node without pre-merge history expiry"
+  __prune="--block-interval 5 --prune.receipts.before 0 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 100064"
+  echo "Pruning parameters: ${__prune}"
 fi
 
 if [ -f /var/lib/reth/prune-marker ]; then
@@ -119,5 +110,5 @@ if [ -f /var/lib/reth/prune-marker ]; then
 else
 # Word splitting is desired for the command line parameters
 # shellcheck disable=SC2086
-  exec "$@" ${__network} ${__verbosity} ${__static} ${EL_EXTRAS}
+  exec "$@" ${__network} ${__verbosity} ${__static} ${__prune} ${EL_EXTRAS}
 fi
