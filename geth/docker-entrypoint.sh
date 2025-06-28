@@ -94,7 +94,14 @@ esac
 
 if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Geth archive node without pruning"
-  __prune="--syncmode=full --gcmode=archive"
+  if [[ ! -d /var/lib/geth/geth/chaindata && ! -d /var/lib/goethereum/geth/chaindata ]]; then
+    touch /var/lib/geth/path-archive
+  fi
+  if [ -f /var/lib/geth/path-archive ]; then
+    __prune="--syncmode=full --state.scheme=path --history.state=0"
+  else
+    __prune="--syncmode=full --gcmode=archive"
+  fi
 elif [ "${MINIMAL_NODE}" = "true" ]; then
    echo "Geth minimal node with pre-merge history expiry"
   __prune="--history.chain postmerge"
