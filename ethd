@@ -4237,8 +4237,7 @@ config() {
       __query_execution_client
     fi
 
-    if [[ "${EXECUTION_CLIENT}" =~ (erigon.yml|nimbus-el.yml) ]] \
-        && [[ "${NETWORK}" =~ (mainnet|sepolia) ]]; then
+    if [[ -n "${EXECUTION_CLIENT+x}" && "${NETWORK}" =~ (mainnet|sepolia) ]]; then
       if [[ "${__deployment}" = "rpc" ]]; then
         __query_4444 --defaultno
       else
