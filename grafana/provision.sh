@@ -185,7 +185,7 @@ case "$CLIENT" in
     ;;&
   !(*grafana-rootless*) )
       # cadvisor and node exporter dashboard
-      __id=10619
+      __id=19724
       __revision=$(wget -t 3 -T 10 -qO - https://grafana.com/api/dashboards/${__id} | jq .revision)
       __url="https://grafana.com/api/dashboards/${__id}/revisions/${__revision}/download"
       __file='/etc/grafana/provisioning/dashboards/docker-host-container-overview.json'
