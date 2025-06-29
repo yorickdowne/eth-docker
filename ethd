@@ -122,11 +122,13 @@ __handle_docker() {
 
     __var=NODE_EXPORTER_IGNORE_MOUNT_REGEX
     __get_value_from_env "${__var}" "${__env_file}" "__value"
-    __regex="^'\^/\(dev\|proc\|sys\|run\|.+/\.\+\)\(\$\|/\)'$"
+# Match either of the patterns Eth Docker uses. Leave alone if there are user changes to the var
+# Match literal `'^/(dev|proc|sys|run|some/path/.+)($|/)'` or `'^/(dev|proc|sys|run|var/snap/.+|some/path/.+)($|/)'
+    __regex="^'\^\/\(dev\|proc\|sys\|run\|(var\/snap\/\.\+\|)?[a-zA-Z/]+\/\.\+\)\(\\$\|\/\)'$"
     if [[ "${__value}" =~ ${__regex} ]]; then
 # This gets used, but shellcheck doesn't recognize that
 # shellcheck disable=SC2034
-      NODE_EXPORTER_IGNORE_MOUNT_REGEX="'^/(dev|proc|sys|run|${DOCKER_ROOT#/}/.+)($|/)'"
+      NODE_EXPORTER_IGNORE_MOUNT_REGEX="'^/(dev|proc|sys|run|var/snap/.+|${DOCKER_ROOT#/}/.+)($|/)'"
       __update_value_in_env "${__var}" "${!__var}" "${__env_file}"
     fi
   fi
