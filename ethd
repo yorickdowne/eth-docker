@@ -2360,6 +2360,15 @@ prune-history() {
     exit 1
   fi
 
+# Only PoW right now, which is mainnet or sepolia
+  __var=NETWORK
+  __get_value_from_env "${__var}" "${__env_file}" "__value"
+  if [[ ! "${__value}" =~ ^(mainnet|sepolia)$ ]]; then
+    echo "There is no pre-merge history for ${__value} network."
+    echo "Nothing to do. Aborting."
+    exit 0
+  fi
+
 # Check whether this has already been done
   __var=EL_MINIMAL_NODE
   __get_value_from_env "${__var}" "${__env_file}" "__value"
@@ -4245,7 +4254,11 @@ config() {
       else
         __query_4444 ""
       fi
+    else  # On all other networks, disable
+#shellcheck disable=SC2034
+      EL_MINIMAL_NODE=false
     fi
+
     __query_checkpoint_sync
     __query_mev
     __query_grafana

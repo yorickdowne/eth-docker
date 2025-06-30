@@ -110,16 +110,23 @@ if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Nimbus EL does not support running an archive node"
   sleep 30
   exit 1
+elif [ "${MINIMAL_NODE}" = "true" ]; then
+  case "${NETWORK}" in
+    mainnet | sepolia )
+      echo "Nimbus EL minimal node with pre-merge history expiry"
+      __prune="--history-expiry=true"
+      if [ "${PORTAL}" = "true" ]; then
+        __prune+=" --portal-url=${PORTAL_NODE}"
+      fi
+      ;;
+    * )
+      echo "There is no pre-merge history for ${NETWORK} network, EL_MINIMAL_NODE has no effect."
+      __prune=""
+      ;;
+  esac
 else
-  if [ "${MINIMAL_NODE}" = "true" ]; then
-    echo "Nimbus EL minimal node with pre-merge history expiry"
-    __prune="--history-expiry=true"
-    if [ "${PORTAL}" = "true" ]; then
-      __prune+=" --portal-url=${PORTAL_NODE}"
-    fi
-  else
-    __prune=""
-  fi
+  echo "Nimbus EL full node without history expiry"
+  __prune=""
 fi
 
 if [[ "${NETWORK}" =~ ^https?:// ]]; then

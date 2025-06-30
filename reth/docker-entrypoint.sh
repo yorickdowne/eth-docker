@@ -84,12 +84,20 @@ if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Reth archive node without pruning"
   __prune=""
 elif [ "${MINIMAL_NODE}" = "true" ]; then
-   echo "Reth minimal node with pre-merge history expiry"
   __prune="--block-interval 5 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 100064"
   case ${NETWORK} in
-    mainnet ) __prune+=" --prune.bodies.pre-merge --prune.receipts.before 15537394";;
-    sepolia ) __prune+=" --prune.bodies.pre-merge --prune.receipts.before 1450409";;
-    * ) echo "${NETWORK} has no pre-merge blocks, this will behave identical to a full node"; __prune+=" --prune.receipts.before 0";;
+    mainnet )
+      echo "Reth minimal node with pre-merge history expiry"
+      __prune+=" --prune.bodies.pre-merge --prune.receipts.before 15537394"
+      ;;
+    sepolia )
+      echo "Reth minimal node with pre-merge history expiry"
+      __prune+=" --prune.bodies.pre-merge --prune.receipts.before 1450409"
+      ;;
+    * )
+      echo "There is no pre-merge history for ${NETWORK} network, EL_MINIMAL_NODE has no effect."
+      __prune+=" --prune.receipts.before 0"
+      ;;
   esac
   echo "Pruning parameters: ${__prune}"
 else
