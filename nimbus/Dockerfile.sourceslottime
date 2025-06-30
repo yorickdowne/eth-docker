@@ -18,7 +18,7 @@ RUN bash -c "git clone ${SRC_REPO} nimbus-eth2 && cd nimbus-eth2 && git config a
 	make -j$(nproc) update && make -j$(nproc) NIMFLAGS="-d:SECONDS_PER_SLOT=${SECONDS_PER_SLOT}" nimbus_beacon_node nimbus_validator_client"
 
 # Pull all binaries into a second stage deploy debian container
-FROM debian:bookworm-slim as consensus
+FROM debian:bookworm-slim AS consensus
 
 ARG USER=user
 ARG UID=10002
