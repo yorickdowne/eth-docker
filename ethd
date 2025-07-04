@@ -2383,8 +2383,8 @@ prune-history() {
   case "${__value}" in
     *geth.yml* )
       __client="Geth"
-      __min_ver="master / latest"
-      __extra_msg="To prune pre-merge history, a full resync is required, which should take 6-8 hours.\nYou can use https://rescuenode.com to keep attesting during resync."
+      __min_ver="v1.16.0"
+      __extra_msg="Pre-merge history can be pruned by Geth without requiring a full resync. You can observe pruning with \"./ethd logs -f execution\"."
       __prune_marker="/var/lib/geth/prune-marker"
       ;;
     *nimbus-el.yml* )
