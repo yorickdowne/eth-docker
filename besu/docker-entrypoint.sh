@@ -57,7 +57,7 @@ elif [ "${MINIMAL_NODE}" = "true" ]; then
   case "${NETWORK}" in
     mainnet | sepolia )
       echo "Besu minimal node with pre-merge history expiry"
-      __prune="--Xsnapsync-synchronizer-pre-merge-headers-only-enabled=true"
+      __prune="--snapsync-server-enabled"
       __timestamp_file="/var/lib/besu/prune-history-timestamp.txt"
       if [ -f "${__timestamp_file}" ]; then
         __saved_ts=$(<"${__timestamp_file}")
@@ -69,7 +69,7 @@ elif [ "${MINIMAL_NODE}" = "true" ]; then
         else
           echo "Enabling RocksDB garbage collection after history prune. You should see Besu DB space usage go down."
           echo "This may take 6-12 hours. Eth Docker will keep RocksDB garbage collection on for 48 hours."
-          __prune+=" --Xhistory-expiry-prune"
+          __prune+=" --history-expiry-prune"
         fi
       fi
       ;;
@@ -80,7 +80,7 @@ elif [ "${MINIMAL_NODE}" = "true" ]; then
   esac
 else
   echo "Besu full node without history expiry"
-  __prune=""
+  __prune="--snapsync-synchronizer-pre-merge-headers-only-enabled=false --snapsync-server-enabled"
 fi
 
 # New or old datadir
