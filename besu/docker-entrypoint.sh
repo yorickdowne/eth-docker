@@ -80,7 +80,7 @@ elif [ "${MINIMAL_NODE}" = "true" ]; then
   esac
 else
   echo "Besu full node without history expiry"
-  __prune="--snapsync-synchronizer-pre-merge-headers-only-enabled=false --snapsync-server-enabled"
+  __prune="--snapsync-synchronizer-pre-checkpoint-headers-only-enabled=false --snapsync-server-enabled"
 fi
 
 # New or old datadir
