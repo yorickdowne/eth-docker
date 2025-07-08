@@ -64,7 +64,11 @@ fi
 if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Prysm archive node without pruning"
   __prune="--slots-per-archive-point=32 --blob-retention-epochs=4294967295"
+elif [ "${MINIMAL_NODE}" = "true" ]; then
+  echo "Prysm node with beacon DB pruning"
+  __prune="--beacon-db-pruning"
 else
+  echo "Prysm node without beacon DB pruning"
   __prune=""
 fi
 
