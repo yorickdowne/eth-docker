@@ -64,7 +64,7 @@ elif [ "${MINIMAL_NODE}" = "true" ]; then
   case "${NETWORK}" in
     mainnet | sepolia )
       echo "Erigon minimal node with pre-merge history expiry"
-      __prune="--history-expiry --prune.mode=full"
+      __prune="--prune.mode=full"
       ;;
     * )
       echo "There is no pre-merge history for ${NETWORK} network, Erigon will use \"full\" pruning."
