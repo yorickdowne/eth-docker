@@ -1,0 +1,75 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
+
+services:
+  anchor:
+    restart: "unless-stopped"
+    build:
+      context: ./anchor
+      dockerfile: ${SSV_ANCHOR_DOCKERFILE}
+      args:
+        - DOCKER_TAG=${SSV_ANCHOR_TAG:-latest}
+        - DOCKER_REPO=${SSV_ANCHOR_REPO:-sigp/anchor}
+    image: anchor:local
+    pull_policy: never
+    user: 12000:12000
+    volumes:
+      - ./ssv-config:/config
+      - ssv-anchor-data:/var/lib/anchor
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - ${HOST_IP:-}:${SSV_P2P_PORT}:${SSV_P2P_PORT}/tcp
+      - ${HOST_IP:-}:${SSV_P2P_PORT_UDP}:${SSV_P2P_PORT_UDP}/udp
+    environment:
+      - IPV6=${IPV6:-false}
+      - DVT_EXTRAS=${DVT_EXTRAS}
+      - SSV_P2P_PORT=${SSV_P2P_PORT}
+      - SSV_P2P_PORT_UDP=${SSV_P2P_PORT_UDP}
+    <<: *logging
+    entrypoint:
+      - docker-entrypoint.sh
+      - anchor
+      - node
+      - --datadir
+      - /var/lib/anchor
+      - --network
+      - ${NETWORK}
+      - --listen-addresses
+      - 0.0.0.0
+      - --port
+      - ${SSV_P2P_PORT}
+      - --discovery-port
+      - ${SSV_P2P_PORT_UDP}
+      - --beacon-nodes
+      - ${CL_NODE}
+      - --execution-rpc
+      - ${EL_RPC_NODE}
+      - --execution-ws
+      - ${EL_WS_NODE}
+      - --key-file
+      - /config/encrypted_private_key.json
+      - --password-file
+      - /config/password.pass
+      - --metrics
+      - --metrics-address
+      - 0.0.0.0
+      - --metrics-port
+      - "15000"
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=15000
+      - metrics.instance=ssv-anchor
+      - metrics.network=${NETWORK}
+
+volumes:
+  ssv-anchor-data:
+
+networks:
+  default:
+    enable_ipv6: ${IPV6:-false}

@@ -3585,6 +3585,30 @@ __query_execution_client() {
 }
 
 
+__query_ssv_client() {
+  if [ ! "${NETWORK}" = "hoodi" ]; then
+    SSV_CLIENT="ssv.yml"
+    echo "Your SSV client file is:" "${SSV_CLIENT}"
+    return 0
+  fi
+
+  __choices=()
+  __arch=$(uname -m)
+
+  __choices+=("ssv.yml" "SSV Node (Go)")
+  __choices+=("anchor.yml" "Anchor (Rust)")
+
+  __num_items=$(( ${#__choices[@]} / 2 ))
+  __menu_height=$(( 8 + __num_items ))
+
+  SSV_CLIENT=$(whiptail --notags --title "Select SSV client" --menu \
+  "Which SSV client do you want to run?" "${__menu_height}" 65 "${__num_items}" \
+  "${__choices[@]}" 3>&1 1>&2 2>&3)
+
+  echo "Your SSV client file is:" "${SSV_CLIENT}"
+}
+
+
 __query_4444() {  # Call with with --defaultno for RPC
   if (whiptail --title "History expiry" --yesno "Do you want to expire pre-merge history? Good for a validator node, but makes eth_getLogs RPC calls impossible pre-merge" 10 65 "$1") then
     EL_MINIMAL_NODE=true
@@ -4214,6 +4238,7 @@ config() {
         exit 1
       fi
       rm ssv-config/config.yaml.original
+      __query_ssv_client
       if [ ! -f "./ssv-config/password.pass" ]; then
         echo "Creating password file for encrypted SSV secret key"
         head -c 16 /dev/urandom | base64 | tr -d '[:space:]' >./ssv-config/password.pass
@@ -4222,10 +4247,24 @@ config() {
       fi
       if [ ! -f "./ssv-config/encrypted_private_key.json" ]; then
         echo "Creating encrypted operator private key"
-        __dodocker run --name ssv-node-key-generation -v "$(pwd)/ssv-config/password.pass":/password.pass \
-          -it ssvlabs/ssv-node:latest /go/bin/ssvnode generate-operator-keys \
-          --password-file=/password.pass && __dodocker cp ssv-node-key-generation:/encrypted_private_key.json \
-          ./ssv-config/encrypted_private_key.json && __dodocker rm ssv-node-key-generation
+        case "${SSV_CLIENT}" in
+          ssv.yml )
+            __dodocker run --name ssv-node-key-generation -v "$(pwd)/ssv-config/password.pass":/password.pass \
+              ssvlabs/ssv-node:latest /go/bin/ssvnode generate-operator-keys --password-file=/password.pass && \
+            __dodocker cp ssv-node-key-generation:/encrypted_private_key.json ./ssv-config/encrypted_private_key.json && \
+            __dodocker rm ssv-node-key-generation
+            ;;
+          anchor.yml )
+            __dodocker run --name anchor-key-generation -v "$(pwd)/ssv-config/password.pass":/password.pass \
+              sigp/anchor:latest keygen --password-file=/password.pass --encrypt && \
+            __dodocker cp anchor-key-generation:/encrypted_private_key.json ./ssv-config/encrypted_private_key.json && \
+            __dodocker rm anchor-key-generation
+            ;;
+          * )
+            echo "Unknown SSV client \"${SSV_CLIENT}\". This is a bug."
+            exit 70
+            ;;
+        esac
         ${__auto_sudo} chown 12000:12000 ./ssv-config/encrypted_private_key.json
       fi
       __query_dkg
@@ -4413,7 +4452,7 @@ config() {
     fi
   fi
   if [[ "${__deployment}" = "ssv" || "${__deployment}" = "lido_ssv" ]]; then
-    COMPOSE_FILE="${COMPOSE_FILE}:ssv.yml"
+    COMPOSE_FILE="${COMPOSE_FILE}:${SSV_CLIENT}"
     if [[ -n "${__ssv_operator_id}" && ! "${__ssv_operator_id}" = "-1" ]]; then
       COMPOSE_FILE="${COMPOSE_FILE}:ssv-dkg.yml"
     fi
@@ -4552,6 +4591,10 @@ version() {
       ;;&
     *ssv.yml* )
       __docompose exec ssv-node /go/bin/ssvnode --version
+      echo
+      ;;&
+    *anchor.yml* )
+      __docompose exec anchor anchor node --version
       echo
       ;;&
     *lighthouse.yml* | *lighthouse-cl-only* )
