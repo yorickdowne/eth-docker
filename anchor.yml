@@ -25,11 +25,13 @@ services:
     ports:
       - ${HOST_IP:-}:${SSV_P2P_PORT}:${SSV_P2P_PORT}/tcp
       - ${HOST_IP:-}:${SSV_P2P_PORT_UDP}:${SSV_P2P_PORT_UDP}/udp
+      - ${HOST_IP:-}:${SSV_QUIC_PORT}:${SSV_QUIC_PORT}/udp
     environment:
       - IPV6=${IPV6:-false}
       - DVT_EXTRAS=${DVT_EXTRAS}
       - SSV_P2P_PORT=${SSV_P2P_PORT}
       - SSV_P2P_PORT_UDP=${SSV_P2P_PORT_UDP}
+      - SSV_QUIC_PORT=${SSV_QUIC_PORT}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -45,6 +47,8 @@ services:
       - ${SSV_P2P_PORT}
       - --discovery-port
       - ${SSV_P2P_PORT_UDP}
+      - --quic-port
+      - ${SSV_QUIC_PORT}
       - --beacon-nodes
       - ${CL_NODE}
       - --execution-rpc
