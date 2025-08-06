@@ -664,12 +664,13 @@ __display_docker_dir() {
 
 __display_docker_volumes() {
   echo
-  if [ -z "$(__dodocker volume ls -q -f "name=^$(basename "$(realpath .)" | tr '[:upper:]' '[:lower:]')_[^_]+")" ]; then
+  # Assume project name and volume are delimited by _ and there is no _ in the volume name. Done to avoid catching project-2 while looking at project
+  if [ -z "$(__dodocker volume ls -q -f "name=^$(basename "$(realpath .)" | tr '[:upper:]' '[:lower:]')_[^_]+$")" ]; then
     echo "There are no Docker volumes for this copy of ${__project_name}"
     echo
   else
     echo "Here are the Docker volumes used by this copy of ${__project_name} and their space usage:"
-    __dodocker system df -v | grep -A 500 "VOLUME NAME" | grep -i "^$(basename "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
+    __dodocker system df -v | grep -A 500 "VOLUME NAME" | grep -iE "^$(basename "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")_[^_]+$"
     echo
     echo "If your Consensus Layer client takes more than 300 GiB, you can resync it with"
     echo "\"${__me} resync-consensus\"."
@@ -3186,7 +3187,8 @@ cmd() {
 
 
 terminate() {
-  if [ -z "$(__dodocker volume ls -q -f "name=^$(basename "$(realpath .)" | tr '[:upper:]' '[:lower:]')_[^_]+")" ]; then
+  # Assume project name and volume are delimited by _ and there is no _ in the volume name. Done to avoid catching project-2 while looking at project
+  if [ -z "$(__dodocker volume ls -q -f "name=^$(basename "$(realpath .)" | tr '[:upper:]' '[:lower:]')_[^_]+$")" ]; then
     echo "There are no data stores - Docker volumes - left to remove for this Ethereum node."
     stop
     return 0
@@ -3204,7 +3206,7 @@ terminate() {
   stop
 # In this case I want the word splitting, so rm can remove all volumes
 # shellcheck disable=SC2046
-  __dodocker volume rm $(__dodocker volume ls -q -f "name=^$(basename "$(realpath .)" | tr '[:upper:]' '[:lower:]')_[^_]+")
+  __dodocker volume rm $(__dodocker volume ls -q -f "name=^$(basename "$(realpath .)" | tr '[:upper:]' '[:lower:]')_[^_]+$")
   echo
   echo "All containers stopped and all volumes deleted"
   echo
