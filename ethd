@@ -4436,11 +4436,27 @@ config() {
 # shellcheck disable=SC2034
     VE_OPERATOR_ID=$(whiptail --title "Lido Operator ID" --inputbox "Put your Operator ID from Lido Operators dashboard \
 (right-click to paste)" 10 60 3>&1 1>&2 2>&3)
-    __obol_prom_remote_token=$(whiptail --title "Obol prometheus" --inputbox "Put Obol Prometheus remote write token \
+    __obol_prom_remote_token=$(whiptail --title "Obol Prometheus" --inputbox "Put Obol Prometheus remote write token \
 (right-click to paste)" 10 60 3>&1 1>&2 2>&3)
     cat ./prometheus/obol-prom.yml.sample > ./prometheus/custom-prom.yml
     sed -i'.original' "s|      credentials: <PROM_REMOTE_WRITE_TOKEN>|      credentials: ${__obol_prom_remote_token}|" ./prometheus/custom-prom.yml
     rm -f ./prometheus/custom-prom.yml.original
+    OBOL_CHARON_REMOTE_LOKI_ADDRESSES=$(whiptail --title "Obol Loki" --inputbox "Put Obol Loki remote URL \
+(right-click to paste)" 10 60 3>&1 1>&2 2>&3)
+    if [ -n "${OBOL_CHARON_REMOTE_LOKI_ADDRESSES}" ]; then
+      OBOL_CLUSTER_NAME=$(whiptail --title "Obol cluster name" --inputbox "Put your Obol cluster name \
+(right-click to paste)" 10 60 "Eth Docker" 3>&1 1>&2 2>&3)
+      OBOL_CLUSTER_PEER=$(whiptail --title "Obol cluster peer" --inputbox "Put your Obol cluster peer \
+(right-click to paste)" 10 60 "eth-docker" 3>&1 1>&2 2>&3)
+    else
+# This gets used, but shellcheck doesn't recognize that
+# shellcheck disable=SC2034
+      OBOL_CLUSTER_NAME=""
+# This gets used, but shellcheck doesn't recognize that
+# shellcheck disable=SC2034
+      OBOL_CLUSTER_PEER=""
+      echo "Obol Loki remote URL is empty, skipping"
+    fi
   fi
 
   if [ "${CONSENSUS_CLIENT}" = "caplin" ]; then
@@ -4465,6 +4481,9 @@ config() {
   fi
   if [ "${__deployment}" = "lido_obol" ]; then
     COMPOSE_FILE="${COMPOSE_FILE}:lido-obol.yml"
+    if [ -n "${OBOL_CHARON_REMOTE_LOKI_ADDRESSES}" ]; then
+      COMPOSE_FILE="${COMPOSE_FILE}:lido-obol-promtail.yml"
+    fi
   fi
   if { [ "${__deployment}" = "node" ] || [ "${__deployment}" = "rocket" ]; } \
   && [ "${NETWORK}" = "hoodi" ]; then
@@ -4533,6 +4552,12 @@ config() {
     __var=VE_ORACLE_ADDRESSES_ALLOWLIST
     __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
     __var=VE_STAKING_MODULE_ID
+    __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
+    __var=OBOL_CHARON_REMOTE_LOKI_ADDRESSES
+    __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
+    __var=OBOL_CLUSTER_NAME
+    __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
+    __var=OBOL_CLUSTER_PEER
     __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
 # We are using the variable
 # shellcheck disable=SC2034
