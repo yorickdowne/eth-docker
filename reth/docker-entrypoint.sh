@@ -84,7 +84,7 @@ if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Reth archive node without pruning"
   __prune=""
 elif [ "${MINIMAL_NODE}" = "true" ]; then
-  __prune="--block-interval 5 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 100064"
+  __prune="--block-interval 5 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 10064"
   case ${NETWORK} in
     mainnet )
       echo "Reth minimal node with pre-merge history expiry"
@@ -102,7 +102,7 @@ elif [ "${MINIMAL_NODE}" = "true" ]; then
   echo "Pruning parameters: ${__prune}"
 else
    echo "Reth full node without pre-merge history expiry"
-  __prune="--block-interval 5 --prune.receipts.before 0 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 100064"
+  __prune="--block-interval 5 --prune.receipts.before 0 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 10064"
   echo "Pruning parameters: ${__prune}"
 fi
 
