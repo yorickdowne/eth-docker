@@ -4462,7 +4462,7 @@ config() {
   fi
 
   if [ "${CONSENSUS_CLIENT}" = "caplin" ]; then
-    COMPOSE_FILE="${EXECUTION_CLIENT}"
+    COMPOSE_FILE="${EXECUTION_CLIENT}:caplin-ports.yml"
   else
     COMPOSE_FILE="${CONSENSUS_CLIENT}"
     if [ -n "${EXECUTION_CLIENT+x}" ]; then
