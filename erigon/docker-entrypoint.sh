@@ -59,16 +59,16 @@ if [ "${ARCHIVE_NODE}" = "true" ]; then
   __prune="--prune.mode=archive --prune.distance=0"
 elif [ "${MINIMAL_NODE}" = "aggressive" ]; then
   echo "Erigon minimal node with aggressive expiry"
-  __prune="--prune.mode=minimal"
+  __prune="--prune.mode=minimal --experiment.persist.receipts.v2=false"
 elif [ "${MINIMAL_NODE}" = "true" ]; then
   case "${NETWORK}" in
     mainnet | sepolia )
       echo "Erigon minimal node with pre-merge history expiry"
-      __prune="--prune.mode=full"
+      __prune="--prune.mode=full --experiment.persist.receipts.v2=false"
       ;;
     * )
       echo "There is no pre-merge history for ${NETWORK} network, Erigon will use \"full\" pruning."
-      __prune="--prune.mode=full"
+      __prune="--prune.mode=full --experiment.persist.receipts.v2=false"
       ;;
   esac
 else
