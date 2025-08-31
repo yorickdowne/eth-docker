@@ -11,9 +11,8 @@ services:
     image: ${CB_PBS_DOCKER_REPO:-ghcr.io/commit-boost/pbs}:${CB_PBS_DOCKER_TAG:-latest}
     environment:
       CB_CONFIG: /cb-config.toml
-      CB_METRICS_PORT: 10000
     volumes:
-    - ./commit-boost/cb-config.toml:/cb-config.toml:ro
+      - ./commit-boost/cb-config.toml:/cb-config.toml:ro
     networks:
       default:
         aliases:
