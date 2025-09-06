@@ -1,5 +1,5 @@
 # Build Grandine in a stock Rust build container
-FROM rust:bookworm AS builder
+FROM rust:trixie AS builder
 
 # Unused, this is here to avoid build time complaints
 ARG DOCKER_TAG
@@ -18,7 +18,7 @@ RUN bash -c "git clone ${SRC_REPO} grandine && cd grandine && git config advice.
 && cargo build --bin grandine  --profile compact --features default-networks"
 
 # Pull all binaries into a second stage deploy debian container
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN set -eux; \
         apt-get update; \
@@ -34,6 +34,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install 
   git \
   git-lfs \
   curl \
+  adduser \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 

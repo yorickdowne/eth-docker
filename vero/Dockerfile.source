@@ -1,7 +1,7 @@
 ARG VENV_LOCATION="/opt/venv"
 
 # Build image
-FROM python:3.13-bookworm AS builder
+FROM python:3.12-trixie AS builder
 
 # Unused but included to avoid warnings
 ARG DOCKER_TAG
@@ -18,13 +18,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y bash git && \
    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="$VENV_LOCATION/bin:$PATH"
-RUN pip install --no-cache-dir uv && uv venv ${VENV_LOCATION}
+# Pin uv to 0.6 until https://github.com/serenita-org/vero/pull/193 is in a release
+RUN pip install --no-cache-dir uv~=0.6.17 && uv venv ${VENV_LOCATION}
 RUN bash -c "git clone ${SRC_REPO} vero && cd vero && git config advice.detachedHead false && git fetch --all --tags \
   && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:vero-pr; git checkout vero-pr; else git checkout ${BUILD_TARGET}; fi \
   && uv pip sync --prefix ${VENV_LOCATION} requirements.txt"
 
 # App image
-FROM python:3.13-bookworm
+FROM python:3.12-trixie
 
 ARG USER=vero
 ARG UID=10000

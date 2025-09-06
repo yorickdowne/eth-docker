@@ -1012,11 +1012,11 @@ __upgrade_postgres() {
   echo "In failure case, do not start Web3signer again, instead seek help on Ethstaker Discord."
   echo
 
-  __dodocker pull "pgautoupgrade/pgautoupgrade:${__target_pg}-bookworm"
+  __dodocker pull "pgautoupgrade/pgautoupgrade:${__target_pg}-debian"
   __during_migrate=1
   __dodocker run --rm -v "${__source_vol}":"/var/lib/postgresql/data" \
    -e PGAUTO_ONESHOT=yes -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
-   "pgautoupgrade/pgautoupgrade:${__target_pg}-bookworm"
+   "pgautoupgrade/pgautoupgrade:${__target_pg}-debian"
 
   __migrated=1
 
@@ -1028,7 +1028,7 @@ __upgrade_postgres() {
   __var="PG_DOCKER_TAG"
 # This gets used, but shellcheck doesn't recognize that
 # shellcheck disable=SC2034
-  PG_DOCKER_TAG=${__target_pg}-bookworm # To bookworm to avoid collation errors - also a faster PostgreSQL
+  PG_DOCKER_TAG=${__target_pg}-trixie # To debian to avoid collation errors - also a faster PostgreSQL
   __update_value_in_env "${__var}" "${!__var}" "${__env_file}"
   echo "Web3signer has been stopped. You'll need to run \"${__me} update\" and \"${__me} up\" to start it again."
   echo

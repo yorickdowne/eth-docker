@@ -1,5 +1,5 @@
 # Build Nimbus in a stock debian container
-FROM debian:bookworm-slim AS builder
+FROM debian:trixie-slim AS builder
 
 # Included here to avoid build-time complaints
 ARG DOCKER_TAG
@@ -15,13 +15,13 @@ WORKDIR /usr/src
 RUN bash -c "git clone ${SRC_REPO} nimbus-eth1 && cd nimbus-eth1 && git config advice.detachedHead false && git fetch --all --tags && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:nim-pr; git checkout nim-pr; else git checkout ${BUILD_TARGET}; fi && make -j$(nproc) update && make -j$(nproc) nimbus_execution_client"
 
 # Pull all binaries into a second stage deploy debian container
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ARG USER=user
 ARG UID=10001
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends \
-  ca-certificates bash tzdata librocksdb-dev curl aria2 \
+  ca-certificates bash tzdata librocksdb-dev curl aria2 adduser \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
