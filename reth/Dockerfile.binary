@@ -18,6 +18,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install 
   git \
   git-lfs \
   wget \
+  jq \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 

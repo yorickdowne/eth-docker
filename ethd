@@ -1038,6 +1038,60 @@ __upgrade_postgres() {
 }
 
 
+repair-reth() {
+# Check for Reth
+  __var="COMPOSE_FILE"
+  __get_value_from_env "${__var}" "${__env_file}" "__value"
+# I do mean to match literally
+# shellcheck disable=SC2076
+  if [[ ! "${__value}" =~ "reth.yml" ]]; then
+    if [ "${__during_update}" -eq 1 ]; then
+      return 0
+    else
+      echo "You do not appear to be using Reth. Aborting"
+      return 0
+    fi
+  fi
+
+  if [ "${__during_update}" -eq 1 ]; then
+  # Check for last Reth that touched the DB
+    set +e
+    __docompose exec -T -u root execution /bin/bash -c 'apt-get update && apt-get install -y --no-install-recommends jq'
+    __reth_db_version=$(__docompose exec -T execution /bin/bash -c 'reth db --datadir /var/lib/reth list VersionHistory --json --quiet | grep "\[" -A 50 | jq .[0][1].version')
+    __exitstatus=$?
+    set -e
+
+    if [[ "${__exitstatus}" -ne 0 || -z "${__reth_db_version}" ]]; then
+      echo "Cannot determine Reth DB version, skipping repair"
+      return 0
+    fi
+
+    __reth_major=$(echo "${__reth_db_version}" | awk -F. '{print $1}')
+    __reth_minor=$(echo "${__reth_db_version}" | awk -F. '{print $2}')
+
+    if [[ "${__reth_major}" -ge 2 || ( "${__reth_major}" -le 1 && "${__reth_minor}" -ge 7 ) ]]; then  # Last touched by Reth >= 1.7
+      return 0
+    fi
+  fi
+
+  if [ "${__non_interactive:-0}" -eq 0 ]; then
+    echo
+    while true; do
+      read -rp "WARNING - About to repair the Reth database. This can take 2 hours or more. Do you wish to continue? (Y/n) " __yn
+      case $__yn in
+        [Nn]o | [Nn]  ) echo "Skipping Reth database repair"; return 0;;
+        * ) break;;
+      esac
+    done
+  fi
+
+  __docompose exec execution touch /var/lib/reth/repair-trie
+  echo "Restarting Reth to initiate repair"
+  echo "You can monitor progress with \"./ethd logs -f execution\"."
+  restart execution
+}
+
+
 __enable_v6() {
   if [ "${__docker_major_version}" -lt 27 ]; then
     return
@@ -1712,6 +1766,7 @@ update() {
   __pull_and_build
 
   __upgrade_postgres
+  repair-reth
 
   echo
   if [ "${__migrated}" -eq 1 ] && ! cmp -s "${__env_file}" "${__env_file}".source; then
@@ -4793,6 +4848,8 @@ __full_help() {
   echo "    stops the execution client and prunes pre-merge history, if supported."
   echo "  prune-lighthouse [--non-interactive]"
   echo "    stops the Lighthouse consensus client and prunes state."
+  echo "  repair-reth"
+  echo "    stops the Reth execution client and repairs its database."
   echo "  resync-execution"
   echo "    removes the execution layer database and forces a resync."
   echo "  resync-consensus"
@@ -4915,7 +4972,7 @@ fi
 case "$__command" in
   help|config|keys|update|up|start|down|stop|restart|version|logs|cmd|terminate|prune-nethermind\
       |prune-besu|prune-reth|prune-history|prune-lighthouse|resync-execution|resync-consensus|attach-geth\
-      |keyimport|space)
+      |repair-reth|keyimport|space)
     $__command "$@";;
   *)
     echo "Unrecognized command $__command"
