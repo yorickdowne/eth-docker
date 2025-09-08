@@ -9,7 +9,6 @@ x-logging: &logging
 services:
   traefik:
     image: traefik:${TRAEFIK_TAG}
-    pull_policy: never
     restart: "unless-stopped"
     command:
       # - --accesslog=true
@@ -53,16 +52,16 @@ services:
     <<: *logging
 
   dns:
-    image: dns-aws
+    image: dns-aws:local
     pull_policy: never
     build:
-      context: ./traefik
+      context: ./traefik-utils
     restart: "unless-stopped"
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_PROFILE=${AWS_PROFILE:-}
-      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_REGION=${AWS_REGION:-us-east-2}
       - AWS_HOSTED_ZONE_ID=${AWS_HOSTED_ZONE_ID}
       - A_RECORD_NAME=${DDNS_SUBDOMAIN}.${DOMAIN}
       - CNAME_LIST=${CNAME_LIST:-}
@@ -70,6 +69,12 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       - ~/.aws:/root/.aws:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import boto3; boto3.client('route53').list_hosted_zones()"]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     <<: *logging
 
 volumes:
