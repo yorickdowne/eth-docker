@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3059
 FROM wealdtech/ethdo:latest
 
 ARG USER=ethdo
@@ -13,7 +14,12 @@ RUN adduser \
     --uid "${UID}" \
     "${USER}"
 
-RUN apt-get update && apt-get install -y gosu jq
+RUN set -eux; \
+  apt-get update; \
+  DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends gosu jq; \
+  rm -rf /var/lib/apt/lists/*; \
+# verify that the binary works
+  gosu nobody true
 
 RUN mkdir -p /app/wallet
 RUN chown -R ${USER}:${USER} /app

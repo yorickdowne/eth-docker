@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3059
 # Build Lighthouse in a stock Rust build container
 FROM rust:trixie AS builder
 
@@ -9,17 +10,18 @@ ARG BUILD_TARGET
 ARG SRC_REPO
 ENV FEATURES modern,gnosis,slasher-lmdb,jemalloc
 
-RUN apt-get update && apt-get -y dist-upgrade && apt-get install -y cmake libclang-dev protobuf-compiler
+RUN apt-get update && apt-get -y dist-upgrade && apt-get install -y --no-install-recommends cmake libclang-dev protobuf-compiler
 
 WORKDIR /usr/src
-RUN bash -c "git clone ${SRC_REPO} lighthouse && cd lighthouse && git config advice.detachedHead false && git fetch --all --tags && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:lh-pr; git checkout lh-pr; else git checkout ${BUILD_TARGET}; fi && CROSS_PROFILE=maxperf make"
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN "git clone ${SRC_REPO} lighthouse && cd lighthouse && git config advice.detachedHead false && git fetch --all --tags && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:lh-pr; git checkout lh-pr; else git checkout ${BUILD_TARGET}; fi && CROSS_PROFILE=maxperf make"
 
 # Pull all binaries into a second stage deploy debian container
 FROM debian:trixie-slim
 
 RUN set -eux; \
         apt-get update; \
-        apt-get install -y gosu; \
+        apt-get install -y --no-install-recommends gosu; \
         rm -rf /var/lib/apt/lists/*; \
 # verify that the binary works
         gosu nobody true
@@ -36,7 +38,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install 
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 # rsync for migration
-RUN apt-get update && apt-get install -y --no-install-recommends rsync
+RUN apt-get update && apt-get install -y --no-install-recommends rsync && rm -rf /var/lib/apt/lists/*
 
 ARG USER=lhconsensus
 ARG UID=10002

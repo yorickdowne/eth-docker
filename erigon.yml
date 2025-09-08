@@ -53,7 +53,8 @@ services:
       default:
         aliases:
           - eth1
-          - ${EL_ALIAS:-default-execution}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${EL_ALIAS:-default-execution}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -75,7 +76,7 @@ services:
       - --metrics
       - --metrics.addr
       - 0.0.0.0
-# Erigon needs this to be explicit. When it's covered by defaults, remove
+      # Erigon needs this to be explicit. When it's covered by defaults, remove
       - --http.api
       - web3,eth,net,engine
       - --http
@@ -113,7 +114,7 @@ services:
     volumes:
       - erigon-el-data:/var/lib/erigon
       - /etc/localtime:/etc/localtime:ro
-    entrypoint: ["/bin/sh","-c"]
+    entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         rm -rf /var/lib/erigon/caplin/*

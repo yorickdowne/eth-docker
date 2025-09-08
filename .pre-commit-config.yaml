@@ -1,22 +1,75 @@
+---
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-    - id: trailing-whitespace-fixer
-    - id: end-of-file-fixer
-    - id: check-json
-    - id: check-yaml
-    - id: double-quote-string-fixer
-    - id: check-shebang-scripts-are-executable
-    - id: check-executables-have-shebangs
-    - id: detect-private-key
-    - id: detect-aws-credentials
-repos:
-- repo: https://github.com/jumanjihouse/pre-commit-hooks
-  rev: 3.0.0
-  hooks:
-  - id: shellcheck
-  - id: script-must-have-extension
-  - id: git-dirty
-  - id: git-check
-  - id: forbid-binary
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-yaml
+      - id: check-shebang-scripts-are-executable
+      - id: check-executables-have-shebangs
+      - id: detect-private-key
+      - id: check-ast
+      - id: debug-statements
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: mixed-line-ending
+      - id: check-case-conflict
+      - id: requirements-txt-fixer
+      - id: check-toml
+
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: shellcheck
+      - id: script-must-have-extension
+      - id: git-dirty
+      - id: git-check
+      - id: forbid-binary
+
+  # Python formatting & linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.12
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Static typing
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - boto3-stubs[route53,sts]
+          - types-requests
+
+  # Security (lightweight)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.6
+    hooks:
+      - id: bandit
+        args: ["-q", "-ll", "-x", "tests"]
+
+  # Spelling (nice quality-of-life)
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+
+  # Dockerfiles
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.1
+    hooks:
+      - id: hadolint-docker
+
+  # YAML style (beyond syntax)
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args:
+          - -d
+          - >
+            {extends: default, rules: {line-length: {max: 120},document-start: disable,truthy: disable}}

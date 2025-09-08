@@ -7,7 +7,7 @@ scrape_configs:
       module: [icmp]
     static_configs:
       - targets:
-        - 8.8.8.8
+          - 8.8.8.8
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -21,7 +21,7 @@ scrape_configs:
       module: [icmp]
     static_configs:
       - targets:
-        - 1.1.1.1
+          - 1.1.1.1
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

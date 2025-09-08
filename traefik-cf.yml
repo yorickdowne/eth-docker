@@ -11,11 +11,11 @@ services:
     image: traefik:${TRAEFIK_TAG}
     restart: "unless-stopped"
     command:
-#      - --accesslog=true
-#      - --accesslog.format=json
-#      - --accesslog.fields.defaultmode=keep
-#      - --accesslog.fields.headers.defaultmode=keep
-#      - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
+      # - --accesslog=true
+      # - --accesslog.format=json
+      # - --accesslog.fields.defaultmode=keep
+      # - --accesslog.fields.headers.defaultmode=keep
+      # - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
       - --log.level=${LOG_LEVEL:-info}
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -52,8 +52,16 @@ services:
     image: qmcgaw/ddns-updater:${DDNS_TAG}
     restart: "unless-stopped"
     environment:
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - 'CONFIG={"settings": [{"provider": "cloudflare", "zone_identifier": "${CF_ZONE_ID}", "domain": "${DDNS_SUBDOMAIN}.${DOMAIN}", "ttl": 1, "token": "${CF_DNS_API_TOKEN}", "proxied": ${DDNS_PROXY}, "ip_version": "ipv4"},{"provider": "cloudflare", "zone_identifier": "${CF_ZONE_ID}", "domain": "${DDNS_SUBDOMAIN}.${DOMAIN}", "ttl": 1, "token": "${CF_DNS_API_TOKEN}", "proxied": ${DDNS_PROXY}, "ip_version": "ipv6"}]}'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CONFIG: >-
+        {"settings": [
+        {"provider": "cloudflare", "zone_identifier": "${CF_ZONE_ID}",
+        "domain": "${DDNS_SUBDOMAIN}.${DOMAIN}", "ttl": 1, "token": "${CF_DNS_API_TOKEN}",
+        "proxied": ${DDNS_PROXY}, "ip_version": "ipv4"},
+        {"provider": "cloudflare", "zone_identifier": "${CF_ZONE_ID}",
+        "domain": "${DDNS_SUBDOMAIN}.${DOMAIN}", "ttl": 1, "token": "${CF_DNS_API_TOKEN}",
+        "proxied": ${DDNS_PROXY}, "ip_version": "ipv6"}
+        ]}
     volumes:
       - /etc/localtime:/etc/localtime:ro
     <<: *logging

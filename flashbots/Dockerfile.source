@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3018,DL3059
 # Build in a stock Go build container
 FROM golang:1.24-alpine AS builder
 
@@ -11,7 +12,8 @@ ARG SRC_REPO
 RUN apk update && apk add --no-cache make gcc musl-dev linux-headers git bash
 
 WORKDIR /src
-RUN bash -c "git clone ${SRC_REPO} mev-boost && cd mev-boost && git config advice.detachedHead false && git fetch --all --tags && \
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN "git clone ${SRC_REPO} mev-boost && cd mev-boost && git config advice.detachedHead false && git fetch --all --tags && \
 if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:mev-pr; git checkout mev-pr; else git checkout ${BUILD_TARGET}; fi && \
 make build"
 

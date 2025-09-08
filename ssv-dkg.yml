@@ -14,7 +14,7 @@ services:
       context: ./traefik
       dockerfile: Dockerfile.jq
     restart: "no"
-    profiles: [ "tools" ]
+    profiles: ["tools"]
 
   ssv-dkg:
     restart: "unless-stopped"

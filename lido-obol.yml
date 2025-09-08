@@ -18,7 +18,7 @@ services:
       - CHARON_LOG_LEVEL=${OBOL_LOG_LEVEL:-debug}
       - CHARON_LOG_FORMAT=${OBOL_LOG_FORMAT:-console}
       - CHARON_P2P_RELAYS=${OBOL_P2P_RELAYS:-https://0.relay.obol.tech,https://1.relay.obol.tech/}
-      - CHARON_P2P_EXTERNAL_HOSTNAME=${OBOL_P2P_EXTERNAL_HOSTNAME:-} # Empty default required to avoid warnings.
+      - CHARON_P2P_EXTERNAL_HOSTNAME=${OBOL_P2P_EXTERNAL_HOSTNAME:-}  # Empty default required to avoid warnings.
       - CHARON_P2P_TCP_ADDRESS=0.0.0.0:${OBOL_P2P_PORT:-3610}
       - CHARON_VALIDATOR_API_ADDRESS=0.0.0.0:3600
       - CHARON_MONITORING_ADDRESS=0.0.0.0:3620
@@ -28,7 +28,7 @@ services:
       - CHARON_LOKI_SERVICE=charon
       - CHARON_NICKNAME=${OBOL_CHARON_NICKNAME:-}
     ports:
-      - ${OBOL_P2P_PORT:-3610}:${OBOL_P2P_PORT:-3610}/tcp # P2P TCP libp2p
+      - ${OBOL_P2P_PORT:-3610}:${OBOL_P2P_PORT:-3610}/tcp  # P2P TCP libp2p
     healthcheck:
       test: wget -qO- http://localhost:3620/readyz
     labels:
@@ -58,32 +58,32 @@ services:
       context: ./traefik
       dockerfile: Dockerfile.jq
     restart: "no"
-    profiles: [ "tools" ]
+    profiles: ["tools"]
 
   validator-ejector:
-   platform: linux/amd64
-   image: lidofinance/validator-ejector:${VALIDATOR_EJECTOR_TAG:-1.7.0}
-   user: ":"
-   volumes:
-     - .eth/lido-ejector:/exitmessages
-   restart: unless-stopped
-   environment:
-     -  EXECUTION_NODE=${OBOL_EL_NODE:-http://execution:8545}
-     -  CONSENSUS_NODE=${OBOL_CL_NODE:-http://consensus:5052}
-     -  LOCATOR_ADDRESS=${VE_LOCATOR_ADDRESS:-0xe2EF9536DAAAEBFf5b1c130957AB3E80056b06D8}
-     -  STAKING_MODULE_ID=${VE_STAKING_MODULE_ID:-2}
-     -  OPERATOR_ID=${VE_OPERATOR_ID}
-     -  ORACLE_ADDRESSES_ALLOWLIST=${VE_ORACLE_ADDRESSES_ALLOWLIST:-["0xcA80ee7313A315879f326105134F938676Cfd7a9","0xf03B8DC8762B97F13Ac82e6F94bE3Ed002FF7459","0x1932f53B1457a5987791a40Ba91f71c5Efd5788F","0xf7aE520e99ed3C41180B5E12681d31Aa7302E4e5","0x99B2B75F490fFC9A29E4E1f5987BE8e30E690aDF","0x219743f1911d84B32599BdC2Df21fC8Dba6F81a2","0xD3b1e36A372Ca250eefF61f90E833Ca070559970","0x4c75FA734a39f3a21C57e583c1c29942F021C6B7","0xfe43A8B0b481Ae9fB1862d31826532047d2d538c","0x43C45C2455C49eed320F463fF4f1Ece3D2BF5aE2","0x948A62cc0414979dc7aa9364BA5b96ECb29f8736"]}
-     -  MESSAGES_LOCATION=/exitmessages
-     -  RUN_METRICS=true
-     -  HTTP_PORT=8989
-     -  DISABLE_SECURITY_DONT_USE_IN_PRODUCTION=${VE_DISABLE_SECURITY:-false}
-     -  FORCE_DENCUN_FORK_MODE=true
-   labels:
-     - metrics.scrape=true
-     - metrics.path=/metrics
-     - metrics.port=8989
-     - metrics.instance=validator-ejector
+    platform: linux/amd64
+    image: lidofinance/validator-ejector:${VALIDATOR_EJECTOR_TAG:-1.7.0}
+    user: ":"
+    volumes:
+      - .eth/lido-ejector:/exitmessages
+    restart: unless-stopped
+    environment:
+      - EXECUTION_NODE=${OBOL_EL_NODE:-http://execution:8545}
+      - CONSENSUS_NODE=${OBOL_CL_NODE:-http://consensus:5052}
+      - LOCATOR_ADDRESS=${VE_LOCATOR_ADDRESS:-0xe2EF9536DAAAEBFf5b1c130957AB3E80056b06D8}
+      - STAKING_MODULE_ID=${VE_STAKING_MODULE_ID:-2}
+      - OPERATOR_ID=${VE_OPERATOR_ID}
+      - ORACLE_ADDRESSES_ALLOWLIST=${VE_ORACLE_ADDRESSES_ALLOWLIST:-["0xcA80ee7313A315879f326105134F938676Cfd7a9","0xf03B8DC8762B97F13Ac82e6F94bE3Ed002FF7459","0x1932f53B1457a5987791a40Ba91f71c5Efd5788F","0xf7aE520e99ed3C41180B5E12681d31Aa7302E4e5","0x99B2B75F490fFC9A29E4E1f5987BE8e30E690aDF","0x219743f1911d84B32599BdC2Df21fC8Dba6F81a2","0xD3b1e36A372Ca250eefF61f90E833Ca070559970","0x4c75FA734a39f3a21C57e583c1c29942F021C6B7","0xfe43A8B0b481Ae9fB1862d31826532047d2d538c","0x43C45C2455C49eed320F463fF4f1Ece3D2BF5aE2","0x948A62cc0414979dc7aa9364BA5b96ECb29f8736"]}
+      - MESSAGES_LOCATION=/exitmessages
+      - RUN_METRICS=true
+      - HTTP_PORT=8989
+      - DISABLE_SECURITY_DONT_USE_IN_PRODUCTION=${VE_DISABLE_SECURITY:-false}
+      - FORCE_DENCUN_FORK_MODE=true
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=8989
+      - metrics.instance=validator-ejector
 
   lido-dv-exit:
     image: obolnetwork/lido-dv-exit:${LIDO_DV_EXIT_TAG:-latest}

@@ -50,7 +50,8 @@ services:
       default:
         aliases:
           - eth2
-          - ${CL_ALIAS:-default-consensus}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -225,7 +226,7 @@ services:
     restart: "no"
     volumes:
       - lhconsensus-data:/var/lib/lighthouse
-    entrypoint: ["/bin/sh","-c"]
+    entrypoint: ["/bin/sh", "-c"]
     command: /bin/sh
 
 volumes:

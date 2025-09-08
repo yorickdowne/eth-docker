@@ -74,7 +74,10 @@ services:
     entrypoint:
       - /bin/sh
       - -c
-      - echo "Legacy exit not supported with Nimbus validator client. Please use ./ethd keys sign-exit instead, then submit to beaconcha.in or use ./ethd keys send-exit"
+      - >-
+        echo "Legacy exit not supported with Nimbus validator client. Please use
+        ./ethd keys sign-exit instead, then submit to beaconcha.in or use
+        ./ethd keys send-exit"
 
   validator-keys:
     profiles: ["tools"]

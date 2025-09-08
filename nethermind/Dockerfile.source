@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3059
 # Partially from Nethermind github
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 # Unused, this is here to avoid build time complaints
@@ -9,8 +10,9 @@ ARG SRC_REPO
 
 WORKDIR /
 
-RUN apt-get update -y && apt-get install -y git
-RUN bash -c "\
+RUN apt-get update -y && apt-get install -y --no-install-recommends git
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN "\
     git clone ${SRC_REPO} nethermind && \
     cd nethermind && \
     git config advice.detachedHead false && \
@@ -23,7 +25,7 @@ RUN bash -c "\
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install libsnappy-dev libc6-dev libc6 ca-certificates gosu tzdata wget git git-lfs && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y --no-install-recommends install libsnappy-dev libc6-dev libc6 ca-certificates gosu tzdata wget git git-lfs && rm -rf /var/lib/apt/lists/*
 
 ARG USER=nethermind
 ARG UID=10001

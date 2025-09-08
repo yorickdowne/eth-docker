@@ -16,11 +16,11 @@ services:
     pull_policy: never
     restart: "unless-stopped"
     command:
-#      - --accesslog=true
-#      - --accesslog.format=json
-#      - --accesslog.fields.defaultmode=keep
-#      - --accesslog.fields.headers.defaultmode=keep
-#      - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
+      # - --accesslog=true
+      # - --accesslog.format=json
+      # - --accesslog.fields.defaultmode=keep
+      # - --accesslog.fields.headers.defaultmode=keep
+      # - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
       - --log.level=${LOG_LEVEL:-info}
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false

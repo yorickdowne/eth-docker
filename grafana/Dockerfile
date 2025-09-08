@@ -1,7 +1,8 @@
+# hadolint global ignore=DL3002,DL3007,DL3008,DL3018,DL3059
 FROM grafana/grafana:latest
 
 USER root
-RUN apk --update add wget tree jq sed su-exec
+RUN apk update && apk --no-cache add wget tree jq sed su-exec && rm -rf /var/cache/apk/*
 
 RUN mkdir -p /etc/grafana/provisioning/dashboards/
 RUN mkdir -p /etc/grafana/provisioning/datasources/

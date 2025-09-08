@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3059
 # Build Grandine in a stock Rust build container
 FROM rust:trixie AS builder
 
@@ -8,10 +9,11 @@ ARG DOCKER_REPO
 ARG BUILD_TARGET
 ARG SRC_REPO
 
-RUN apt-get update && apt-get -y dist-upgrade && apt-get install -y cmake libclang-dev protobuf-compiler libz-dev libssl-dev unzip
+RUN apt-get update && apt-get -y dist-upgrade && apt-get install -y --no-install-recommends cmake libclang-dev protobuf-compiler libz-dev libssl-dev unzip
 
 WORKDIR /usr/src
-RUN bash -c "git clone ${SRC_REPO} grandine && cd grandine && git config advice.detachedHead false \
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN "git clone ${SRC_REPO} grandine && cd grandine && git config advice.detachedHead false \
 && git fetch --all --tags \
 && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:gd-pr; git checkout gd-pr; else git checkout ${BUILD_TARGET}; fi \
 && git submodule update --init dedicated_executor eth2_libp2p \
@@ -22,7 +24,7 @@ FROM debian:trixie-slim
 
 RUN set -eux; \
         apt-get update; \
-        apt-get install -y gosu; \
+        apt-get install -y --no-install-recommends gosu; \
         rm -rf /var/lib/apt/lists/*; \
 # verify that the binary works
         gosu nobody true

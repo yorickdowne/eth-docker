@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3059
 ARG DOCKER_TAG=master
 ARG DOCKER_REPO=statusim/nimbus-eth1
 
@@ -19,7 +20,7 @@ RUN apt-get update -y && apt-get full-upgrade -y && DEBIAN_FRONTEND=noninteracti
 
 RUN set -eux; \
         apt-get update; \
-        apt-get install -y gosu; \
+        apt-get install -y --no-install-recommends gosu; \
         rm -rf /var/lib/apt/lists/*; \
 # verify that the binary works
         gosu nobody true

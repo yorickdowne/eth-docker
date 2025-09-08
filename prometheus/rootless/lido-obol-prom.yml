@@ -3,9 +3,9 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
-        - charon:3620
+          - charon:3620
   - job_name: validator-ejector
     metrics_path: /metrics
     static_configs:
       - targets:
-        - validator-ejector:8989
+          - validator-ejector:8989

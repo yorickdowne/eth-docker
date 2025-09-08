@@ -53,7 +53,8 @@ services:
       default:
         aliases:
           - eth2
-          - ${CL_ALIAS:-default-consensus}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -82,7 +83,7 @@ services:
       - metrics.instance=consensus
       - metrics.network=${NETWORK}
 
-# Uses keystore-m file and CL, so does belong here
+  # Uses keystore-m file and CL, so does belong here
   validator-exit:
     profiles: ["tools"]
     restart: "no"

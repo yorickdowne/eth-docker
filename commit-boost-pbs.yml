@@ -13,7 +13,7 @@ services:
       CB_CONFIG: /cb-config.toml
       CB_METRICS_PORT: 10000
     volumes:
-    - ./commit-boost/cb-config.toml:/cb-config.toml:ro
+      - ./commit-boost/cb-config.toml:/cb-config.toml:ro
     networks:
       default:
         aliases:

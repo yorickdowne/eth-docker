@@ -10,8 +10,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v3
       - name: Lint sources
-        run: |
-          sudo apt-get update && sudo apt-get install -y pre-commit
-          pre-commit run --all-files
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files --show-diff-on-failure
