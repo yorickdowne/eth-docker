@@ -15,11 +15,12 @@ RUN adduser \
     --no-create-home \
     "${USER}"
 
+COPY --chown=${USER}:${USER} app/updater.py .
+COPY --chown=${USER}:${USER} app/requirements.txt .
+RUN chmod 555 ./updater.py
+
 RUN mkdir -p /home/dns && chown ${USER}:${USER} /home/dns
 
-RUN pip install --no-cache-dir boto3 requests tenacity
-
-COPY --chown=${USER}:${USER} app/updater.py .
-RUN chmod 555 ./updater.py
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
 CMD ["python", "updater.py"]
