@@ -11,11 +11,18 @@ import requests
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 import boto3
 from botocore.exceptions import ClientError
+from botocore.client import BaseClient
 import sys
 import ipaddress
+from types import FrameType
+from typing import NoReturn
+from typing import Literal
 
 
-def setup_logger():
+RecordType = Literal["A", "AAAA", "CNAME"]
+
+
+def setup_logger() -> None:
     logger = logging.getLogger("dns-updater")
     if not logger.handlers:
         _handler = logging.StreamHandler(sys.stdout)
@@ -26,7 +33,7 @@ def setup_logger():
         logger.propagate = False  # Prevent propagation to root logger
 
 
-def drop_privileges(user: str):
+def drop_privileges(user: str) -> None:
     pw = pwd.getpwnam(user)
     # Supplementary groups
     try:
@@ -53,7 +60,7 @@ def drop_privileges(user: str):
     os.chdir(pw.pw_dir)
 
 
-def copy_aws_config(user: str):
+def copy_aws_config(user: str) -> None:
     pw = pwd.getpwnam(user)
     src = "/root/.aws"
     dst = os.path.join(pw.pw_dir, ".aws")
@@ -76,7 +83,7 @@ def copy_aws_config(user: str):
             os.chmod(os.path.join(root, f), 0o600)
 
 
-def check_credentials():
+def check_credentials() -> None:
     pw = pwd.getpwnam(user)
     aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
     aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
@@ -126,7 +133,7 @@ def validate_ipv6(ip: str) -> bool:
 
 @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(5),
        retry=retry_if_exception_type(requests.RequestException))
-def get_external_ip():
+def get_external_ip() -> str:
     ip_services = [
         "https://ipv4.icanhazip.com",
         "https://checkip.amazonaws.com",
@@ -165,7 +172,7 @@ def get_external_ip():
 
 @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(5),
        retry=retry_if_exception_type(requests.RequestException))
-def get_external_ip6():
+def get_external_ip6() -> str | None:
     ip6_services = [
         "https://api6.ipify.org",
         "https://ipv6.icanhazip.com",
@@ -193,10 +200,10 @@ def normalize_fqdn(s: str) -> str:
     return s.strip().rstrip(".").lower()
 
 
-def record_exists(name, rtype, value, id, route53):
+def record_exists(name: str, rtype: RecordType, value: str, hosted_zone_id: str, route53: BaseClient) -> bool:
     try:
         resp = route53.list_resource_record_sets(
-            HostedZoneId=id,
+            HostedZoneId=hosted_zone_id,
             StartRecordName=name,
             StartRecordType=rtype,
             MaxItems="1"
@@ -217,7 +224,7 @@ def record_exists(name, rtype, value, id, route53):
     return False
 
 
-def upsert_record(name, rtype, value, ttl, id, route53):
+def upsert_record(name: str, rtype: RecordType, value: str, ttl: int, hosted_zone_id: str, route53: BaseClient) -> None:
     change = {
         "Action": "UPSERT",
         "ResourceRecordSet": {
@@ -229,7 +236,7 @@ def upsert_record(name, rtype, value, ttl, id, route53):
     }
     try:
         route53.change_resource_record_sets(
-            HostedZoneId=id,
+            HostedZoneId=hosted_zone_id,
             ChangeBatch={
                 "Comment": f"Auto-updated {rtype} record for {name}",
                 "Changes": [change]
@@ -266,12 +273,12 @@ def build_cname_fqdn(label_or_name: str, domain: str) -> str:
 
 
 # graceful shutdown
-def _shutdown(signum, frame):
+def _shutdown(signum: int, frame: FrameType | None) -> NoReturn:
     logger.info("Received shutdown signal, exiting.")
     raise SystemExit(0)
 
 
-def main():
+def main() -> None:
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
