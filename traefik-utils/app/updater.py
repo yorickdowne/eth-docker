@@ -12,6 +12,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 import boto3
 from botocore.exceptions import ClientError
 import sys
+import ipaddress
 
 USER_NAME = "dns"
 
@@ -136,27 +137,31 @@ def validate_ipv4(ip):
     parts = ip.split(".")
     return len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts)
 
+def validate_ipv6(ip: str) -> bool:
+    try:
+        return isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address)
+    except ValueError:
+        return False
 
 @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(5),
        retry=retry_if_exception_type(requests.RequestException))
 def get_external_ip():
     ip_services = [
+        "https://ipv4.icanhazip.com",
         "https://checkip.amazonaws.com",
+        "http://whatismyip.akamai.com",
+        "http://ip.42.pl/raw",
         "https://api64.ipify.org",
         "https://ipinfo.io/ip",
-        "https://icanhazip.com",
         "https://ifconfig.me",
         "https://ident.me",
         "https://ipecho.net/plain",
         "https://wtfismyip.com/text",
         "https://bot.whatismyipaddress.com",
         "https://myexternalip.com/raw",
-        "http://whatismyip.akamai.com",
-        "http://ip.42.pl/raw",
         "https://ip.seeip.org",
         "https://ip.tyk.nu",
         "https://api.my-ip.io/ip",
-        "https://ipv4.icanhazip.com",
         "https://ipwho.is/?format=text"
     ]
 
@@ -175,6 +180,32 @@ def get_external_ip():
             logger.debug(f"Failed to get IP from {url}: {e}")
 
     raise requests.RequestException("Unable to fetch external IP from any source")
+
+
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(5),
+       retry=retry_if_exception_type(requests.RequestException))
+def get_external_ip6():
+    ip6_services = [
+        "https://api6.ipify.org",
+        "https://ipv6.icanhazip.com",
+        "https://ifconfig.co/ip",
+        "https://ident.me",           # works on v6 if reachable via v6
+        "https://myexternalip.com/raw"
+    ]
+    for url in ip6_services:
+        try:
+            resp = requests.get(url, timeout=3)
+            if resp.ok:
+                ip = resp.text.strip().split()[0]
+                if validate_ipv6(ip):
+                    logger.info(f"Got external IPv6 from {url}: {ip}")
+                    return ip
+                else:
+                    logger.debug(f"Invalid IPv6 format from {url}: {ip}")
+        except Exception as e:
+            logger.debug(f"Failed to get IPv6 from {url}: {e}")
+    logger.info("No external IPv6 detected; skipping AAAA update")
+    return None
 
 
 def normalize_fqdn(s: str) -> str:
@@ -265,13 +296,24 @@ def main():
     DOMAIN = ".".join(A_RECORD_NAME.split(".")[1:])
     while True:
         try:
-            ip = get_external_ip()
+            ip4 = get_external_ip()
+            ip6 = get_external_ip6()
             fqdn = A_RECORD_NAME if A_RECORD_NAME.endswith('.') else A_RECORD_NAME + '.'
 
-            if not record_exists(fqdn, "A", ip):
-                upsert_record(fqdn, "A", ip)
+            if not record_exists(fqdn, "A", ip4):
+                upsert_record(fqdn, "A", ip4)
+                logger.info(f"Updated A record {fqdn} with IP {ip4}")
             else:
-                logger.info(f"A record {fqdn} already up-to-date with IP {ip}")
+                logger.info(f"A record {fqdn} already up-to-date with IP {ip4}")
+
+            if ip6:
+                if not record_exists(fqdn, "AAAA", ip6):
+                    upsert_record(fqdn, "AAAA", ip6)
+                    logger.info(f"Updated AAAA record {fqdn} with IP {ip6}")
+                else:
+                    logger.info(f"AAAA record {fqdn} already up-to-date with IP {ip6}")
+            else:
+                logger.debug("Skipping AAAA update: no external IPv6 detected")
 
             for cname in CNAME_TARGETS:
                 cname_fqdn = build_cname_fqdn(cname, DOMAIN)
