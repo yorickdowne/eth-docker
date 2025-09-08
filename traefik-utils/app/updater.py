@@ -14,16 +14,16 @@ from botocore.exceptions import ClientError
 import sys
 import ipaddress
 
-USER_NAME = "dns"
 
-logger = logging.getLogger("dns-updater")
-if not logger.handlers:
-    _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-    logger.addHandler(_handler)
-    _level = os.getenv("LOG_LEVEL", "INFO").upper()
-    logger.setLevel(getattr(logging, _level, logging.INFO))
-    logger.propagate = False  # Prevent propagation to root logger
+def setup_logger():
+    logger = logging.getLogger("dns-updater")
+    if not logger.handlers:
+        _handler = logging.StreamHandler(sys.stdout)
+        _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+        logger.addHandler(_handler)
+        _level = os.getenv("LOG_LEVEL", "INFO").upper()
+        logger.setLevel(getattr(logging, _level, logging.INFO))
+        logger.propagate = False  # Prevent propagation to root logger
 
 
 def drop_privileges(user: str):
@@ -109,39 +109,20 @@ def check_credentials():
     # 4. Nothing found
     raise RuntimeError("No valid AWS credentials found (env vars or ~/.aws/credentials)")
 
-copy_aws_config(USER_NAME)
-drop_privileges(USER_NAME)
 
-# Load environment variables
-HOSTED_ZONE_ID = os.environ["AWS_HOSTED_ZONE_ID"]
-A_RECORD_NAME = os.environ["A_RECORD_NAME"]
-CNAME_LIST = os.getenv("CNAME_LIST", "")
-TTL = int(os.getenv("TTL", 300))
-SLEEP = int(os.getenv("SLEEP", 300))
+def validate_ipv4(ip: str) -> bool:
+    try:
+        return isinstance(ipaddress.ip_address(ip), ipaddress.IPv4Address)
+    except ValueError:
+        return False
 
-# Parse CNAME targets
-CNAME_TARGETS = [c.strip() for c in CNAME_LIST.split(",") if c.strip()]
-
-check_credentials()
-session = boto3.session.Session()
-try:
-    sts = session.client("sts")
-    ident = sts.get_caller_identity()
-    logger.info(f"AWS identity: {ident['Arn']} (Account {ident['Account']})")
-except Exception as e:
-    logger.error(f"Failed to verify AWS credentials: {e}")
-    sys.exit(1)
-route53 = session.client("route53")
-
-def validate_ipv4(ip):
-    parts = ip.split(".")
-    return len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts)
 
 def validate_ipv6(ip: str) -> bool:
     try:
         return isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address)
     except ValueError:
         return False
+
 
 @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(5),
        retry=retry_if_exception_type(requests.RequestException))
@@ -212,10 +193,10 @@ def normalize_fqdn(s: str) -> str:
     return s.strip().rstrip(".").lower()
 
 
-def record_exists(name, rtype, value):
+def record_exists(name, rtype, value, id, route53):
     try:
         resp = route53.list_resource_record_sets(
-            HostedZoneId=HOSTED_ZONE_ID,
+            HostedZoneId=id,
             StartRecordName=name,
             StartRecordType=rtype,
             MaxItems="1"
@@ -236,19 +217,19 @@ def record_exists(name, rtype, value):
     return False
 
 
-def upsert_record(name, rtype, value):
+def upsert_record(name, rtype, value, ttl, id, route53):
     change = {
         "Action": "UPSERT",
         "ResourceRecordSet": {
             "Name": name,
             "Type": rtype,
-            "TTL": TTL,
+            "TTL": ttl,
             "ResourceRecords": [{"Value": (value.rstrip('.') if rtype == 'CNAME' else value)}]
         }
     }
     try:
         route53.change_resource_record_sets(
-            HostedZoneId=HOSTED_ZONE_ID,
+            HostedZoneId=id,
             ChangeBatch={
                 "Comment": f"Auto-updated {rtype} record for {name}",
                 "Changes": [change]
@@ -257,6 +238,7 @@ def upsert_record(name, rtype, value):
         logger.info(f"Upserted {rtype} record: {name} -> {value}")
     except ClientError as e:
         logger.error(f"Failed to upsert {rtype} record {name}: {e}")
+
 
 def build_cname_fqdn(label_or_name: str, domain: str) -> str:
     """
@@ -293,6 +275,31 @@ def main():
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
+    USER_NAME = "dns"
+    copy_aws_config(USER_NAME)
+    drop_privileges(USER_NAME)
+
+    check_credentials()
+    session = boto3.session.Session()
+    try:
+        sts = session.client("sts")
+        ident = sts.get_caller_identity()
+        logger.info(f"AWS identity: {ident['Arn']} (Account {ident['Account']})")
+    except Exception as e:
+        logger.error(f"Failed to verify AWS credentials: {e}")
+        sys.exit(1)
+    route53 = session.client("route53")
+
+    # Load environment variables
+    HOSTED_ZONE_ID = os.environ["AWS_HOSTED_ZONE_ID"]
+    A_RECORD_NAME = os.environ["A_RECORD_NAME"]
+    CNAME_LIST = os.getenv("CNAME_LIST", "")
+    TTL = int(os.getenv("TTL", 300))
+    SLEEP = int(os.getenv("SLEEP", 300))
+
+    # Parse CNAME targets
+    CNAME_TARGETS = [c.strip() for c in CNAME_LIST.split(",") if c.strip()]
+
     DOMAIN = ".".join(A_RECORD_NAME.split(".")[1:])
     while True:
         try:
@@ -300,15 +307,15 @@ def main():
             ip6 = get_external_ip6()
             fqdn = A_RECORD_NAME if A_RECORD_NAME.endswith('.') else A_RECORD_NAME + '.'
 
-            if not record_exists(fqdn, "A", ip4):
-                upsert_record(fqdn, "A", ip4)
+            if not record_exists(fqdn, "A", ip4, HOSTED_ZONE_ID, route53):
+                upsert_record(fqdn, "A", ip4, TTL, HOSTED_ZONE_ID, route53)
                 logger.info(f"Updated A record {fqdn} with IP {ip4}")
             else:
                 logger.info(f"A record {fqdn} already up-to-date with IP {ip4}")
 
             if ip6:
-                if not record_exists(fqdn, "AAAA", ip6):
-                    upsert_record(fqdn, "AAAA", ip6)
+                if not record_exists(fqdn, "AAAA", ip6, HOSTED_ZONE_ID, route53):
+                    upsert_record(fqdn, "AAAA", ip6, TTL, HOSTED_ZONE_ID, route53)
                     logger.info(f"Updated AAAA record {fqdn} with IP {ip6}")
                 else:
                     logger.info(f"AAAA record {fqdn} already up-to-date with IP {ip6}")
@@ -321,8 +328,8 @@ def main():
                 if normalize_fqdn(cname_fqdn) == normalize_fqdn(DOMAIN):
                     logger.warning(f"Skipping apex CNAME for {cname_fqdn}")
                     continue
-                if not record_exists(cname_fqdn, "CNAME", fqdn):
-                    upsert_record(cname_fqdn, "CNAME", fqdn)
+                if not record_exists(cname_fqdn, "CNAME", fqdn, HOSTED_ZONE_ID, route53):
+                    upsert_record(cname_fqdn, "CNAME", fqdn, TTL, HOSTED_ZONE_ID, route53)
                 else:
                     logger.info(f"CNAME {cname_fqdn} already points to {fqdn}")
 
@@ -334,4 +341,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    logger = setup_logger()
+    try:
+        main()
+    except Exception as e:
+        logger.error(f"Fatal: {e}")
+        sys.exit(1)
