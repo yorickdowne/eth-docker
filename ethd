@@ -1057,7 +1057,7 @@ repair-reth() {
   # Check for last Reth that touched the DB
     set +e
     __docompose exec -T -u root execution /bin/bash -c 'apt-get update && apt-get install -y --no-install-recommends jq'
-    __reth_db_version=$(__docompose exec -T execution /bin/bash -c 'reth db --datadir /var/lib/reth list VersionHistory --json --quiet | grep "\[" -A 50 | jq .[0][1].version')
+    __reth_db_version=$(__docompose exec -T execution /bin/bash -c 'reth db --datadir /var/lib/reth list VersionHistory --json --quiet | grep "\[" -A 50 | jq -r .[0][1].version')
     __exitstatus=$?
     set -e
 
