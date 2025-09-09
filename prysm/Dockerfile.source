@@ -1,4 +1,4 @@
-# hadolint global ignore=DL3007,DL3008,DL3016,DL3059
+# hadolint global ignore=DL3007,DL3008,DL3016,DL3059,DL4006
 # Build Prysm in a stock Go build container
 FROM golang:1.25-trixie AS builder
 
@@ -14,8 +14,7 @@ ARG SRC_REPO
 RUN apt-get update && apt-get install -y --no-install-recommends cmake libgmp-dev npm && npm install -g @bazel/bazelisk && bazel version && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /go/src
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN "git clone ${SRC_REPO} prysm && cd prysm && git config advice.detachedHead false && git fetch --all --tags && \
+RUN bash -o pipefail -c "git clone ${SRC_REPO} prysm && cd prysm && git config advice.detachedHead false && git fetch --all --tags && \
 if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:prysm-pr; git checkout prysm-pr; else git checkout ${BUILD_TARGET}; fi \
 && bazel build --config=release //cmd/beacon-chain:beacon-chain && bazel build --config=release //cmd/validator:validator && bazel build --config=release //cmd/prysmctl:prysmctl \
 && bazel build --config=release //cmd/client-stats:client-stats"

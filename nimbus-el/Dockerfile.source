@@ -1,4 +1,4 @@
-# hadolint global ignore=DL3007,DL3008,DL3059
+# hadolint global ignore=DL3007,DL3008,DL3059,DL4006
 # Build Nimbus in a stock debian container
 FROM debian:trixie-slim AS builder
 
@@ -13,8 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 
 WORKDIR /usr/src
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN "git clone ${SRC_REPO} nimbus-eth1 && cd nimbus-eth1 && git config advice.detachedHead false && git fetch --all --tags && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:nim-pr; git checkout nim-pr; else git checkout ${BUILD_TARGET}; fi && make -j$(nproc) update && make -j$(nproc) nimbus_execution_client"
+RUN bash -o pipefail -c "git clone ${SRC_REPO} nimbus-eth1 && cd nimbus-eth1 && git config advice.detachedHead false && git fetch --all --tags && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:nim-pr; git checkout nim-pr; else git checkout ${BUILD_TARGET}; fi && make -j$(nproc) update && make -j$(nproc) nimbus_execution_client"
 
 # Pull all binaries into a second stage deploy debian container
 FROM debian:trixie-slim

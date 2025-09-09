@@ -1,4 +1,4 @@
-# hadolint global ignore=DL3007,DL3008,DL3059
+# hadolint global ignore=DL3007,DL3008,DL3059,DL4006
 # Build Grandine in a stock Rust build container
 FROM rust:trixie AS builder
 
@@ -12,8 +12,7 @@ ARG SRC_REPO
 RUN apt-get update && apt-get -y dist-upgrade && apt-get install -y --no-install-recommends cmake libclang-dev protobuf-compiler libz-dev libssl-dev unzip
 
 WORKDIR /usr/src
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN "git clone ${SRC_REPO} grandine && cd grandine && git config advice.detachedHead false \
+RUN bash -o pipefail -c "git clone ${SRC_REPO} grandine && cd grandine && git config advice.detachedHead false \
 && git fetch --all --tags \
 && if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:gd-pr; git checkout gd-pr; else git checkout ${BUILD_TARGET}; fi \
 && git submodule update --init dedicated_executor eth2_libp2p \

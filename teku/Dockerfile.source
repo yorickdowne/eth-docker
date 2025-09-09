@@ -1,4 +1,4 @@
-# hadolint global ignore=DL3007,DL3008,DL3059
+# hadolint global ignore=DL3007,DL3008,DL3059,DL4006
 # Build Teku in a stock Ubuntu container
 FROM eclipse-temurin:21-jdk-noble AS builder
 
@@ -12,8 +12,7 @@ ARG SRC_REPO
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git
 
 WORKDIR /usr/src
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN "git clone ${SRC_REPO} teku \
+RUN bash -o pipefail -c "git clone ${SRC_REPO} teku \
   && cd teku \
   && git config advice.detachedHead false \
   && git fetch --all --tags \

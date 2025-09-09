@@ -1,4 +1,4 @@
-# hadolint global ignore=DL3007,DL3008,DL3059
+# hadolint global ignore=DL3007,DL3008,DL3059,DL4006
 # Partially from Nethermind github
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 # Unused, this is here to avoid build time complaints
@@ -11,8 +11,7 @@ ARG SRC_REPO
 WORKDIR /
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends git
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN "\
+RUN bash -o pipefail -c "\
     git clone ${SRC_REPO} nethermind && \
     cd nethermind && \
     git config advice.detachedHead false && \
