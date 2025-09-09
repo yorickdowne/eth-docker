@@ -13,7 +13,7 @@ jobs:
   build-reth:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Create .env file
         run: cp default.env .env
       - name: Set Lighthouse/Reth
