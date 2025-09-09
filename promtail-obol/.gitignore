@@ -1,0 +1,4 @@
+*
+!*.sample
+!entrypoint.sh
+!.gitignore

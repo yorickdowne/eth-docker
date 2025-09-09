@@ -263,10 +263,10 @@ __prep_conffiles() {
   fi
 # Create config.yaml if it doesn't exist
   if [ ! -f "ssv-config/config.yaml" ]; then
-    ${__as_owner} cp ssv-config/config-sample.yaml ssv-config/config.yaml
+    ${__as_owner} cp ssv-config/config.yaml.sample ssv-config/config.yaml
   fi
   if [ ! -f "ssv-config/dkg-config.yaml" ]; then
-    ${__as_owner} cp ssv-config/dkg-config-sample.yaml ssv-config/dkg-config.yaml
+    ${__as_owner} cp ssv-config/dkg-config.yaml.sample ssv-config/dkg-config.yaml
   fi
 # Make sure ssv-config yaml files are 664
   if find ssv-config -maxdepth 0 \! -perm 755 | grep -q .; then

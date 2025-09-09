@@ -1,5 +1,5 @@
 # Ensure user-added configs don't get mixed up in git
 .conf.d/*
-!.conf.d/internet-scraper.yml
-!.conf.d/coingecko-scraper.yml
+!.conf.d/ping.yml
+!.conf.d/coingecko.yml
 custom-prom.yml
