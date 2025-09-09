@@ -32,8 +32,8 @@ services:
       - STATIC_DIR=${ANCIENT_DIR}
       # Make this RUST_LOG=${LOG_LEVEL:-info},engine=trace when requiring deep debug
       # RPC debug can be done with jsonrpsee=trace or jsonrpsee::target=trace for a specific target
-      - RUST_LOG=${LOG_LEVEL:-info}
-      - RUST_LOG_STYLE=never
+      # - RUST_LOG=${LOG_LEVEL:-info},engine=trace
+      # - RUST_LOG_STYLE=never
     volumes:
       - reth-el-data:/var/lib/reth
       - ${ANCIENT_DIR:-.nada}:/var/lib/static
