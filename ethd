@@ -285,10 +285,15 @@ __prep_conffiles() {
       echo "Ownership of .eth/dkg_output should be fixed, but this user can't sudo"
     fi
   fi
-# Make sure the dkg output dir and its contents are mod 0755
-  if find .eth/dkg_output \! -perm 755 | grep -q .; then
-    chmod -R 755 .eth/dkg_output
+# Make sure the dkg output dir and its subdirs are mod 0755
+  if find .eth/dkg_output -type d \! -perm 755 | grep -q .; then
+    find .eth/dkg_output -type d -exec chmod 755 {} \;
   fi
+# Make sure the contents of the dkg output dir are mod 0644
+  if find .eth/dkg_output -type f \! -perm 644 | grep -q .; then
+    find .eth/dkg_output -type f -exec chmod 644 {} \;
+  fi
+
 # Create cb-config.toml if it doesn't exist
   if [ ! -f "commit-boost/cb-config.toml" ]; then
     ${__as_owner} cp commit-boost/cb-config.toml.sample commit-boost/cb-config.toml
