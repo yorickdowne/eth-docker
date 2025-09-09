@@ -280,7 +280,7 @@ __prep_conffiles() {
     if [ "$__cannot_sudo" -eq 0 ]; then
       echo "Fixing ownership of .eth/dkg_output"
       ${__auto_sudo} chown -R "${OWNER}:${OWNER_GROUP}" .eth/dkg_output
-      ${__auto_sudo} chmod -R 755 .eth/dkg_output
+      ${__auto_sudo} chmod 755 .eth/dkg_output
     else
       echo "Ownership of .eth/dkg_output should be fixed, but this user can't sudo"
     fi
