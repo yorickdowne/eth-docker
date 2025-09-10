@@ -15,35 +15,31 @@ scrape_configs:
           job: containerlogs
           server: SERVER_LABEL_HOSTNAME
           __path__: /var/lib/docker/containers/*/*log
-
     pipeline_stages:
       - json:
           expressions:
             output: log
             stream: stream
-            attrs:
-
+            attrs: null
       - json:
           expressions:
-            tag:
+            tag: null
           source: attrs
-
       - regex:
-          expression: >
-            (?P<image_name>(?:[^|]*[^|])).(?P<container_name>(?:[^|]*[^|])).(?P<image_id>(?:[^|]*[^|])).(?P<container_id>(?:[^|]*[^|]))
+          # If I do `expression: |` or `expression: >`, promtail no longer parses.
+          # Just disable line length check to deal with it.
+          # yamllint disable rule:line-length
+          expression: (?P<image_name>(?:[^|]*[^|])).(?P<container_name>(?:[^|]*[^|])).(?P<image_id>(?:[^|]*[^|])).(?P<container_id>(?:[^|]*[^|]))
+          # yamllint enable rule:line-length
           source: tag
-
       - timestamp:
           format: RFC3339Nano
           source: time
-
       - labels:
-          stream:
-          container_name:
-
+          stream: null
+          container_name: null
       - labeldrop:
           - filename
-
       - output:
           source: output
 
