@@ -21,16 +21,14 @@ scrape_configs:
             output: log
             stream: stream
             attrs: null
+            time: null
       - json:
           expressions:
             tag: null
           source: attrs
       - regex:
-          # If I do `expression: |` or `expression: >`, promtail no longer parses.
-          # Just disable line length check to deal with it.
-          # yamllint disable rule:line-length
-          expression: (?P<image_name>(?:[^|]*[^|])).(?P<container_name>(?:[^|]*[^|])).(?P<image_id>(?:[^|]*[^|])).(?P<container_id>(?:[^|]*[^|]))
-          # yamllint enable rule:line-length
+          expression: |-
+            (?P<image_name>(?:[^|]*[^|])).(?P<container_name>(?:[^|]*[^|])).(?P<image_id>(?:[^|]*[^|])).(?P<container_id>(?:[^|]*[^|]))
           source: tag
       - timestamp:
           format: RFC3339Nano
