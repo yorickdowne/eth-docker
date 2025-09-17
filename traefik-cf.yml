@@ -48,7 +48,7 @@ services:
       - metrics.network=${NETWORK}
     <<: *logging
 
-  cf-ddns:
+  ddns:
     image: qmcgaw/ddns-updater:${DDNS_TAG}
     restart: "unless-stopped"
     environment:
@@ -70,7 +70,7 @@ services:
     image: curl-jq:local
     pull_policy: never
     build:
-      context: ./traefik
+      context: ./traefik-utils
       dockerfile: Dockerfile.jq
     restart: "no"
     profiles: ["tools"]
