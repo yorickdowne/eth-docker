@@ -521,6 +521,8 @@ validator-count() {
     key_count=$(echo "$__result" | jq -r '.data | length')
     echo "Validator keys loaded into ${__service}: $key_count"
 
+    __vals="$__result"
+
     if [ "${WEB3SIGNER}" = "true" ]; then
         get-token
         __api_path=eth/v1/remotekeys
@@ -535,6 +537,44 @@ validator-count() {
           echo "WARNING: The number of keys loaded into Web3signer and registered with the validator client differ."
           echo "Please run \"./ethd keys register\""
         fi
+    fi
+
+    echo "Querying validator state, this may take a minute"
+    __vals_active=0
+    __vals_exiting=0
+    __vals_exited=0
+    __vals_slashed=0
+    __vals_pending=0
+    __vals_unknown=0
+    for __pubkey in $(echo "$__vals" | jq -r '.data[].validating_pubkey'); do
+      __val_state=$(curl -k -m 60 -s --show-error "${CL_NODE}/eth/v1/beacon/states/head/validators/${__pubkey}" | jq -r .data.status)
+      case "${__val_state}" in
+        active_ongoing) ((__vals_active++));;
+        active_exiting) ((__vals_exiting++));;
+        *_slashed) ((__vals_slashed++));;
+        exited_unslashed|withdrawal_*) ((__vals_exited++));;
+        pending_*) ((__vals_pending++));;
+        unknown|*) ((__vals_unknown++));;
+      esac
+    done
+
+    if [ "${__vals_active}" -gt 0 ]; then
+      echo "Active, unslashed validators: ${__vals_active}"
+    fi
+    if [ "${__vals_exiting}" -gt 0 ]; then
+      echo "Active, exiting validators: ${__vals_exiting}"
+    fi
+    if [ "${__vals_exited}" -gt 0 ]; then
+      echo "Exited and/or withdrawn validators: ${__vals_exited}"
+    fi
+    if [ "${__vals_pending}" -gt 0 ]; then
+      echo "Pending validators: ${__vals_pending}"
+    fi
+    if [ "${__vals_slashed}" -gt 0 ]; then
+      echo "Slashed validators: ${__vals_slashed}"
+    fi
+    if [ "${__vals_unknown}" -gt 0 ]; then
+      echo "Unknown validators, no deposit: ${__vals_unknown}"
     fi
 }
 
@@ -1107,6 +1147,11 @@ __web3signer_check() {
     fi
 }
 
+__clean_exit() {
+  echo "Terminated by user."
+  exit 0
+}
+
 usage() {
     echo "Call keymanager with an ACTION, one of:"
     echo "  list"
@@ -1176,6 +1221,8 @@ usage() {
 }
 
 set -e
+
+trap __clean_exit SIGINT SIGTERM
 
 if echo "$@" | grep -q '.*--debug.*' 2>/dev/null ; then
   __debug=1
