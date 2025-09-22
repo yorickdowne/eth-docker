@@ -508,6 +508,8 @@ validator-count() {
         __token=NIL
         __vc_api_container=${__api_container}
         __api_container=${__w3s_container}
+        __vc_service=${__service}
+        __service=web3signer
         __vc_api_port=${__api_port}
         __api_port=${__w3s_port}
         __vc_api_tls=${__api_tls}
@@ -527,7 +529,7 @@ validator-count() {
         __api_port=${__vc_api_port}
         __api_tls=${__vc_api_tls}
         __validator-list-call
-    remote_key_count=$(echo "$__result" | jq -r '.data | length')
+        remote_key_count=$(echo "$__result" | jq -r '.data | length')
         echo "Remote Validator keys registered with ${__service}: $remote_key_count"
         if [ "${key_count}" -ne "${remote_key_count}" ]; then
           echo "WARNING: The number of keys loaded into Web3signer and registered with the validator client differ."
