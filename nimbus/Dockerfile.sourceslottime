@@ -30,7 +30,7 @@ RUN bash -eo pipefail <<'EOF'
   else
     git checkout "$TARGET"
   fi
-  git submodule update --init --recursive -j$(nproc)
+  git submodule update --init --recursive
   make -j$(nproc) update
   make -j$(nproc) NIMFLAGS=\"-d:SECONDS_PER_SLOT=${SECONDS_PER_SLOT}\" nimbus_beacon_node nimbus_validator_client
 EOF

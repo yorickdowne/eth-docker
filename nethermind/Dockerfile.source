@@ -28,7 +28,7 @@ RUN bash -eo pipefail <<'EOF'
   else
     git checkout "$TARGET"
   fi
-  git submodule update --init --recursive -j$(nproc)
+  git submodule update --init --recursive
   dotnet publish src/Nethermind/Nethermind.Runner -c release -o out
 EOF
 

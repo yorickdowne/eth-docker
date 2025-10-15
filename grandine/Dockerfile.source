@@ -27,7 +27,7 @@ RUN bash -eo pipefail <<'EOF'
   else
     git checkout "$TARGET"
   fi
-  git submodule update --init -j$(nproc) dedicated_executor eth2_libp2p
+  git submodule update --init dedicated_executor eth2_libp2p
   cargo build --bin grandine  --profile compact --features default-networks
 EOF
 
