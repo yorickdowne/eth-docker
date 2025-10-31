@@ -1,11 +1,21 @@
+# See https://github.com/Commit-Boost/commit-boost-client/blob/main/config.example.toml
 chain = "Hoodi"
 
 [pbs]
 port = 18550
+host = "0.0.0.0"
 
 [[relays]]
 id = "aestus"
 url = "https://0x98f0ef62f00780cf8eb06701a7d22725b9437d4768bb19b363e882ae87129945ec206ec2dc16933f31d983f8225772b6@hoodi.aestus.live"
+# OPTIONAL, DEFAULT: false
+# enable_timing_games = false
+# Target time in slot when to send the first header request
+# OPTIONAL
+# target_first_request_ms = 200
+# Frequency in ms to send get_header requests
+# OPTIONAL
+# frequency_get_header_ms = 300
 [[relays]]
 id = "titan"
 url = "https://0xaa58208899c6105603b74396734a6263cc7d947f444f396a90f7b7d3e65d102aec7e5e5291b27e08d02c50a050825c2f@hoodi.titanrelay.xyz"
@@ -15,3 +25,13 @@ url = "https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1d
 [[relays]]
 id = "ultrasound"
 url = "https://0xb1559beef7b5ba3127485bbbb090362d9f497ba64e177ee2c8e7db74746306efad687f2cf8574e38d70067d40ef136dc@relay-hoodi.ultrasound.money"
+
+[metrics]
+port = 10000
+host = "0.0.0.0"
+
+[logs.stdout]
+level = "info"
+
+[logs.file]
+enabled = false

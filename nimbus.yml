@@ -36,6 +36,7 @@ services:
       - NETWORK=${NETWORK}
       - JWT_SECRET=${JWT_SECRET}
       - MEV_BOOST=${MEV_BOOST}
+      - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}  # Unused, here to avoid runtime errors in case of faulty logic
       - MEV_NODE=${MEV_NODE}
       - LOG_LEVEL=${LOG_LEVEL}
       - DOPPELGANGER=false
@@ -53,7 +54,8 @@ services:
       default:
         aliases:
           - eth2
-          - ${CL_ALIAS:-default-consensus}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -96,6 +98,7 @@ services:
       - jwtsecret:/var/lib/nimbus/ee-secret
     environment:
       - MEV_BOOST=${MEV_BOOST}
+      - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}
       - DOPPELGANGER=${DOPPELGANGER}
       - LOG_LEVEL=${LOG_LEVEL}
       - VC_EXTRAS=${VC_EXTRAS:-}
@@ -138,7 +141,10 @@ services:
     entrypoint:
       - /bin/sh
       - -c
-      - echo "Legacy exit not supported with Nimbus validator client. Please use ./ethd keys sign-exit instead, then submit to beaconcha.in or use ./ethd keys send-exit"
+      - >-
+        echo "Legacy exit not supported with Nimbus validator client. Please use
+        ./ethd keys sign-exit instead, then submit to beaconcha.in or use
+        ./ethd keys send-exit"
 
   validator-keys:
     profiles: ["tools"]

@@ -40,18 +40,17 @@ services:
       - MINIMAL_NODE=${CL_MINIMAL_NODE:-}
       - NETWORK=${NETWORK}
       - IPV6=${IPV6:-false}
-      - CL_IPV6_P2P_PORT=${CL_IPV6_P2P_PORT:-9090}
+      - CL_P2P_PORT=${CL_P2P_PORT:-9000}
       - NODE_OPTIONS=${LODESTAR_HEAP:---max-old-space-size=8192}
     ports:
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
-      - ${HOST_IP:-}:${CL_IPV6_P2P_PORT:-9090}:${CL_IPV6_P2P_PORT:-9090}/tcp
-      - ${HOST_IP:-}:${CL_IPV6_P2P_PORT:-9090}:${CL_IPV6_P2P_PORT:-9090}/udp
     networks:
       default:
         aliases:
           - eth2
-          - ${CL_ALIAS:-default-consensus}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -78,7 +77,7 @@ services:
       - --jwtSecret
       - /var/lib/lodestar/consensus/ee-secret/jwtsecret
       - --targetPeers
-      - ${CL_MAX_PEER_COUNT:-100}
+      - ${CL_MAX_PEER_COUNT:-200}
       - --logLevel
       - ${LOG_LEVEL}
       - --suggestedFeeRecipient

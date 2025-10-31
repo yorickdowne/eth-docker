@@ -11,9 +11,9 @@
 # and the scrape configs get added manually
 
 global:
-  scrape_interval:     15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
-  scrape_timeout:      12s # Timeout must be shorter than the interval
-  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  scrape_interval: 15s  # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  scrape_timeout: 12s  # Timeout must be shorter than the interval
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds. The default is every 1 minute.
 
 # Directories with extra scraping targets
 scrape_config_files:
@@ -26,7 +26,7 @@ scrape_configs:
   - job_name: 'prometheus'
     scrape_interval: 5s
     static_configs:
-    - targets: ['prometheus:9090']
+      - targets: ['prometheus:9090']
   - job_name: 'ethereum-metrics-exporter'
     static_configs:
       - targets: ['ethereum-metrics-exporter:9090']

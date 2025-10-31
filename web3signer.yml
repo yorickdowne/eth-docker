@@ -28,7 +28,8 @@ services:
     networks:
       default:
         aliases:
-          - ${W3S_ALIAS:-${NETWORK}-web3signer} # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${W3S_ALIAS:-${NETWORK}-web3signer}
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +72,8 @@ services:
     networks:
       default:
         aliases:
-          - ${PG_ALIAS:-${NETWORK}-postgres} # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${PG_ALIAS:-${NETWORK}-postgres}
 
 volumes:
   web3signer-keys:

@@ -3,4 +3,4 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
-        - ssv-node:15000
+          - ssv-node:15000

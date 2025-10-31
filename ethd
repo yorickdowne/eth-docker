@@ -263,10 +263,10 @@ __prep_conffiles() {
   fi
 # Create config.yaml if it doesn't exist
   if [ ! -f "ssv-config/config.yaml" ]; then
-    ${__as_owner} cp ssv-config/config-sample.yaml ssv-config/config.yaml
+    ${__as_owner} cp ssv-config/config.yaml.sample ssv-config/config.yaml
   fi
   if [ ! -f "ssv-config/dkg-config.yaml" ]; then
-    ${__as_owner} cp ssv-config/dkg-config-sample.yaml ssv-config/dkg-config.yaml
+    ${__as_owner} cp ssv-config/dkg-config.yaml.sample ssv-config/dkg-config.yaml
   fi
 # Make sure ssv-config yaml files are 664
   if find ssv-config -maxdepth 0 \! -perm 755 | grep -q .; then
@@ -280,15 +280,20 @@ __prep_conffiles() {
     if [ "$__cannot_sudo" -eq 0 ]; then
       echo "Fixing ownership of .eth/dkg_output"
       ${__auto_sudo} chown -R "${OWNER}:${OWNER_GROUP}" .eth/dkg_output
-      ${__auto_sudo} chmod -R 755 .eth/dkg_output
+      ${__auto_sudo} chmod 755 .eth/dkg_output
     else
       echo "Ownership of .eth/dkg_output should be fixed, but this user can't sudo"
     fi
   fi
-# Make sure the dkg output dir and its contents are mod 0755
-  if find .eth/dkg_output \! -perm 755 | grep -q .; then
-    chmod -R 755 .eth/dkg_output
+# Make sure the dkg output dir and its subdirs are mod 0755
+  if find .eth/dkg_output -type d \! -perm 755 | grep -q .; then
+    find .eth/dkg_output -type d -exec chmod 755 {} \;
   fi
+# Make sure the contents of the dkg output dir are mod 0644
+  if find .eth/dkg_output -type f \! -perm 644 | grep -q .; then
+    find .eth/dkg_output -type f -exec chmod 644 {} \;
+  fi
+
 # Create cb-config.toml if it doesn't exist
   if [ ! -f "commit-boost/cb-config.toml" ]; then
     ${__as_owner} cp commit-boost/cb-config.toml.sample commit-boost/cb-config.toml
@@ -587,7 +592,7 @@ install() {
   echo "Installing packages that ${__me} requires or considers helpful"
   echo
   ${__auto_sudo} apt-get update
-  ${__auto_sudo} apt-get install -y ca-certificates curl gnupg whiptail chrony pkg-config screen ncdu gzip
+  ${__auto_sudo} apt-get install -y ca-certificates curl gnupg whiptail chrony pkg-config screen ncdu gzip speedtest-cli
 
   echo
   read -rp "Do you want to install Docker and make your user part of the docker group? (no/yes) " __yn
@@ -708,7 +713,7 @@ space() {
   __get_value_from_env "${__var}" "${__env_file}" "ANCIENT_DIR"
   if [ -n "${ANCIENT_DIR}" ]; then
     echo
-    du -sh "${ANCIENT_DIR}"
+    ${__auto_sudo} du -sh "${ANCIENT_DIR}"
   fi
 }
 
@@ -838,6 +843,13 @@ __source_build() {
       ;;
     *nimbus-el.yml* )
       __var="NIMEL_DOCKERFILE"
+      __get_value_from_env "${__var}" "${__env_file}" "__build"
+      if [ "${__build}" = "Dockerfile.source" ]; then
+          __docompose build --pull --no-cache execution
+      fi
+      ;;
+    *ethrex.yml* )
+      __var="ETHREX_DOCKERFILE"
       __get_value_from_env "${__var}" "${__env_file}" "__build"
       if [ "${__build}" = "Dockerfile.source" ]; then
           __docompose build --pull --no-cache execution
@@ -1012,11 +1024,11 @@ __upgrade_postgres() {
   echo "In failure case, do not start Web3signer again, instead seek help on Ethstaker Discord."
   echo
 
-  __dodocker pull "pgautoupgrade/pgautoupgrade:${__target_pg}-bookworm"
+  __dodocker pull "pgautoupgrade/pgautoupgrade:${__target_pg}-debian"
   __during_migrate=1
   __dodocker run --rm -v "${__source_vol}":"/var/lib/postgresql/data" \
    -e PGAUTO_ONESHOT=yes -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
-   "pgautoupgrade/pgautoupgrade:${__target_pg}-bookworm"
+   "pgautoupgrade/pgautoupgrade:${__target_pg}-debian"
 
   __migrated=1
 
@@ -1028,13 +1040,67 @@ __upgrade_postgres() {
   __var="PG_DOCKER_TAG"
 # This gets used, but shellcheck doesn't recognize that
 # shellcheck disable=SC2034
-  PG_DOCKER_TAG=${__target_pg}-bookworm # To bookworm to avoid collation errors - also a faster PostgreSQL
+  PG_DOCKER_TAG=${__target_pg}-trixie # To debian to avoid collation errors - also a faster PostgreSQL
   __update_value_in_env "${__var}" "${!__var}" "${__env_file}"
   echo "Web3signer has been stopped. You'll need to run \"${__me} update\" and \"${__me} up\" to start it again."
   echo
   echo "A copy of your old slashing protection database is in the Docker volume ${__backup_vol}."
   echo "Confirm that everything works, and then delete it with \"docker volume rm ${__backup_vol}\"."
   __during_postgres=0
+}
+
+
+repair-reth() {
+# Check for Reth
+  __var="COMPOSE_FILE"
+  __get_value_from_env "${__var}" "${__env_file}" "__value"
+# I do mean to match literally
+# shellcheck disable=SC2076
+  if [[ ! "${__value}" =~ "reth.yml" ]]; then
+    if [ "${__during_update}" -eq 1 ]; then
+      return 0
+    else
+      echo "You do not appear to be using Reth. Aborting"
+      return 0
+    fi
+  fi
+
+  if [ "${__during_update}" -eq 1 ]; then
+  # Check for last Reth that touched the DB
+    set +e
+    __docompose exec -T -u root execution /bin/bash -c 'apt-get update && apt-get install -y --no-install-recommends jq'
+    __reth_db_version=$(__docompose exec -T execution /bin/bash -c 'RUST_LOG=off reth db --datadir /var/lib/reth list VersionHistory -r -l 1 --json --quiet | jq -r .[0][1].version')
+    __exitstatus=$?
+    set -e
+
+    if [[ "${__exitstatus}" -ne 0 || -z "${__reth_db_version}" ]]; then
+      echo "Cannot determine Reth DB version, skipping repair"
+      return 0
+    fi
+
+    __reth_major=$(echo "${__reth_db_version}" | awk -F. '{print $1}')
+    __reth_minor=$(echo "${__reth_db_version}" | awk -F. '{print $2}')
+
+    if [[ "${__reth_major}" -ge 2 || ( "${__reth_major}" -le 1 && "${__reth_minor}" -ge 7 ) ]]; then  # Last touched by Reth >= 1.7
+      return 0
+    fi
+  fi
+
+  if [ "${__non_interactive:-0}" -eq 0 ]; then
+    echo
+    while true; do
+      read -rp "WARNING - About to repair the Reth database. This can take 2 hours or more. Do you wish to continue? (Y/n) " __yn
+      case $__yn in
+        [Nn]o | [Nn]  ) echo "Skipping Reth database repair"; return 0;;
+        * ) break;;
+      esac
+    done
+  fi
+
+  __docompose exec execution touch /var/lib/reth/repair-trie
+  echo "Restarting Reth to initiate repair"
+  echo "You can monitor progress with \"./ethd logs -f execution\"."
+  restart execution
 }
 
 
@@ -1282,6 +1348,7 @@ __env_migrate() {
   fi
   if [[ "${__target_ver}" -gt "${__source_ver}" ]]; then
     echo "Migrating ${__env_file} to version ${__target_ver}"
+    echo "Note this is not an Eth Docker version, it is an internal config file version"
   fi
 
   ${__as_owner} cp "${__env_file}" "${__env_file}".source
@@ -1712,6 +1779,7 @@ update() {
   __pull_and_build
 
   __upgrade_postgres
+  repair-reth
 
   echo
   if [ "${__migrated}" -eq 1 ] && ! cmp -s "${__env_file}" "${__env_file}".source; then
@@ -1857,6 +1925,11 @@ resync-execution() {
       __el_volume='nimbus-el-data'
       __el_client="Nimbus"
       __extra_msg="A full resync should take 5 days.\nYou can use https://rescuenode.com to keep attesting during resync."
+      ;;
+    *ethrex.yml* )
+      __el_volume='ethrex-el-data'
+      __el_client="Ethrex"
+      __extra_msg="A full resync should take a few hours.\nYou can use https://rescuenode.com to keep attesting during resync."
       ;;
     * ) echo "You do not appear to be running an execution layer client. Nothing to do."; return 0;;
   esac
@@ -2408,7 +2481,7 @@ prune-history() {
       ;;
     *reth.yml* )
       __client="Reth"
-      __min_ver="v1.5.0"
+      __min_ver="v1.8.0"
       __extra_msg="Pruning pre-merge history does not require a resync and should be immediate.\nA resync saves more space than a prune: You can set \"EL_MINIMAL_NODE=true\" manually with \"nano .env\" and then resync with \"./ethd resync-execution\"."
       __prune_marker="/var/lib/reth/minimal-node"
       ;;
@@ -2417,6 +2490,12 @@ prune-history() {
       __min_ver="v3.0.12"
       __extra_msg="To prune pre-merge history, a full resync is required, which should take 2-3 hours.\nYou can use https://rescuenode.com to keep attesting during resync."
       __prune_marker=""
+      ;;
+    *ethrex.yml* )
+      __client="Ethrex"
+      __min_ver="v1.0.0"
+      __extra_msg="Ethrex always expires pre-merge history. This command will have no effect."
+      __prune_marker="/var/lib/ethrex/minimal-node"
       ;;
     * )
       echo "${__me} does not know how to prune pre-merge history on ${__client:-MysteryClient},"
@@ -3557,6 +3636,7 @@ __query_execution_client() {
     __choices+=("nethermind.yml" "Nethermind (.NET)")
     __choices+=("erigon.yml" "Erigon (Go)")
     __choices+=("geth.yml" "Geth (Go)")
+    __choices+=("ethrex.yml" "Ethrex (Rust)")
   fi
 
   if [[ "${__arch}" != *"riscv64"* ]] && [[ "${NETWORK}" =~ (hoodi|sepolia) ]]; then
@@ -3588,12 +3668,6 @@ __query_execution_client() {
 
 
 __query_ssv_client() {
-  if [ ! "${NETWORK}" = "hoodi" ]; then
-    SSV_CLIENT="ssv.yml"
-    echo "Your SSV client file is:" "${SSV_CLIENT}"
-    return 0
-  fi
-
   __choices=()
   __arch=$(uname -m)
 
@@ -3947,11 +4021,64 @@ https://0x8c7d33605ecef85403f8b7289c8058f440cbb6bf72b055dfe2f3e2c6695b6a1ea5a9cd
     # Replace "\n" back to newlines to restore multi-line format
     MEV_RELAYS=$(printf '%s' "${__formatted_mev_relays}" | sed 's/\\n/\n/g')
     echo "Your MEV relay(s): ${MEV_RELAYS}"
+    __final_msg+="\nYou are configured to get block building bids remotely via relay(s)."
   else
     MEV_BOOST="false"
     MEV_RELAYS=""
+    __final_msg+="\nYou are configured to build blocks locally, only.\nPlease ensure you have 200 Mbit/s upload bandwidth or more."
   fi
 }
+
+
+__query_mev_factor() {
+  __var="MEV_BUILD_FACTOR"
+  __get_value_from_env "${__var}" "${__env_file}" "MEV_BUILD_FACTOR"
+#shellcheck disable=SC2076
+  if [[ -n "${MEV_BUILD_FACTOR}" || ! "${MEV_BOOST}" = "true" || "${CONSENSUS_CLIENT}" =~ "-cl-only.yml" ]]; then
+    return
+  fi
+
+  if ! [[ "${__distro}" =~ (ubuntu|debian) ]]; then
+    __final_msg+="\nCannot measure network speed on ${__distro}. Please ensure you have 200 Mbit/s up or set MEV_BUILD_FACTOR=100."
+    return
+  fi
+
+  if ! dpkg-query -W -f='${Status}' speedtest-cli 2>/dev/null | grep -q "ok installed"; then
+    echo "Installing speedtest-cli"
+    ${__auto_sudo} apt-get update && ${__auto_sudo} apt-get install -y --no-install-recommends speedtest-cli
+  fi
+  echo "Running speedtest"
+  set +e
+  __speed_json=$(speedtest-cli --secure --json)
+  __exitstatus=$?
+  set -e
+  if [ "$__exitstatus" -ne 0 ]; then
+    echo "Speedtest failed, skipping MEV Build Factor query"
+    return
+  fi
+  __down_speed=$(jq -r '.download' <<<"${__speed_json}" | awk '{print int($1 / 1000000)}')
+  __up_speed=$(jq -r '.upload' <<<"${__speed_json}" | awk '{print int($1 / 1000000)}')
+  echo "Measured download speed is ${__down_speed} Mbit/s."
+  echo
+  __final_msg+="\nYour measured upload speed is ${__up_speed} Mbit/s.\nYour measured download speed is ${__down_speed} Mbit/s."
+  if [ "${__up_speed}" -lt 200 ]; then  # A bit of a guess at BPO5. Change before Glamsterdam
+    echo "Your upload speed is less than 200 Mbit/s, it is ${__up_speed} Mbit/s"
+    echo "Disabling local block building by setting MEV_BUILD_FACTOR to 100"
+    MEV_BUILD_FACTOR="100"
+    __final_msg+="\nLocal block building was disabled, because your upload speed is low."
+  else
+    __message="Your upload speed is ${__up_speed} Mbit/s. Do you want to build local blocks, when the relay pays less than 10% more?"
+    __default=""
+    if (whiptail --title "MEV Build Factor" --yesno "${__message}" 10 65 "${__default}") then
+      MEV_BUILD_FACTOR="90"
+      __final_msg+="\nLocal block building is preferred, when the relay pays less than 10% more."
+    else
+      MEV_BUILD_FACTOR="100"
+      __final_msg+="\nLocal block building is disabled."
+    fi
+  fi
+}
+
 
 __lido_withdrawal_credentials_address() {
     __lido_address=""
@@ -4214,6 +4341,7 @@ config() {
   fi
 
   __during_config=1
+  __final_msg=""
 
   __check_legacy
   __query_network
@@ -4309,6 +4437,7 @@ config() {
 
     __query_checkpoint_sync
     __query_mev
+    __query_mev_factor
     __query_grafana
     __query_coinbase
     if [[ "${__deployment}" = "node" || "${__deployment}" = "lido_csm" ]]; then
@@ -4502,9 +4631,11 @@ config() {
 # This gets used, but shellcheck doesn't recognize that
 # shellcheck disable=SC2034
     DOCKER_EXT_NETWORK="rocketpool_net"
+    __final_msg+="\nYou are connected to the \"rocketpool_net\" Docker bridge network"
   fi
 
   echo "Your COMPOSE_FILE is:" "${COMPOSE_FILE}"
+  __final_msg+="\nYou are using these service files: ${COMPOSE_FILE}"
 
   __var=FEE_RECIPIENT
   __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
@@ -4537,6 +4668,8 @@ config() {
     __update_value_in_env "${__var}" "custom-mev" "${__env_file}"
   fi
   __var=MEV_BOOST
+  __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
+  __var=MEV_BUILD_FACTOR
   __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
   __var=MEV_RELAYS
   __update_value_in_env "${__var}" "${!__var-}" "${__env_file}"
@@ -4598,6 +4731,7 @@ config() {
   __pull_and_build
   __nag_os_version
 
+  echo -e "${__final_msg-}"
   echo
   echo "Your configuration file is: $(dirname "$(realpath "${BASH_SOURCE[0]}")")/${__env_file}"
   echo "You can change advanced config items with \"nano .env\" when in the $(dirname "$(realpath "${BASH_SOURCE[0]}")") directory."
@@ -4707,6 +4841,10 @@ version() {
       __docompose exec execution nimbus_execution_client --version
       echo
       ;;&
+    *ethrex.yml* )
+      __docompose exec execution ethrex --version
+      echo
+      ;;&
     *web3signer.yml* )
       __docompose exec web3signer /opt/web3signer/bin/web3signer --version
       echo
@@ -4793,6 +4931,8 @@ __full_help() {
   echo "    stops the execution client and prunes pre-merge history, if supported."
   echo "  prune-lighthouse [--non-interactive]"
   echo "    stops the Lighthouse consensus client and prunes state."
+  echo "  repair-reth"
+  echo "    stops the Reth execution client and repairs its database."
   echo "  resync-execution"
   echo "    removes the execution layer database and forces a resync."
   echo "  resync-consensus"
@@ -4915,7 +5055,7 @@ fi
 case "$__command" in
   help|config|keys|update|up|start|down|stop|restart|version|logs|cmd|terminate|prune-nethermind\
       |prune-besu|prune-reth|prune-history|prune-lighthouse|resync-execution|resync-consensus|attach-geth\
-      |keyimport|space)
+      |repair-reth|keyimport|space)
     $__command "$@";;
   *)
     echo "Unrecognized command $__command"

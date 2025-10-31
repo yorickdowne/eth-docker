@@ -57,7 +57,8 @@ services:
       default:
         aliases:
           - eth2
-          - ${CL_ALIAS:-default-consensus}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -106,7 +107,7 @@ services:
     volumes:
       - grandineconsensus-data:/var/lib/grandine
       - /etc/localtime:/etc/localtime:ro
-    entrypoint: ["/bin/sh","-c"]
+    entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         rm -rf /var/lib/grandine/${NETWORK}/beacon/*

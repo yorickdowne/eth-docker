@@ -30,8 +30,6 @@ services:
       - NETWORK=${NETWORK}
       - ERA1_URL=${ERA1_URL:-}
       - ERA_URL=${ERA_URL:-}
-      - PORTAL_NODE=${PORTAL_NODE}
-      - PORTAL=${PORTAL:-false}
     volumes:
       - nimbus-el-data:/var/lib/nimbus
       - /etc/localtime:/etc/localtime:ro
@@ -43,7 +41,8 @@ services:
       default:
         aliases:
           - eth1
-          - ${EL_ALIAS:-default-execution}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${EL_ALIAS:-default-execution}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh

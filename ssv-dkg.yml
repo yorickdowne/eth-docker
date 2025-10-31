@@ -11,10 +11,10 @@ services:
     image: curl-jq:local
     pull_policy: never
     build:
-      context: ./traefik
+      context: ./traefik-utils
       dockerfile: Dockerfile.jq
     restart: "no"
-    profiles: [ "tools" ]
+    profiles: ["tools"]
 
   ssv-dkg:
     restart: "unless-stopped"

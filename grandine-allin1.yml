@@ -33,6 +33,7 @@ services:
       - CHECKPOINT_SYNC_URL=${CHECKPOINT_SYNC_URL}
       - JWT_SECRET=${JWT_SECRET}
       - MEV_BOOST=${MEV_BOOST}
+      - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}
       - MEV_NODE=${MEV_NODE}
       - BEACON_STATS_API=${BEACON_STATS_API}
       - BEACON_STATS_MACHINE=${BEACON_STATS_MACHINE}
@@ -59,7 +60,8 @@ services:
       default:
         aliases:
           - eth2
-          - ${CL_ALIAS:-default-consensus}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -117,7 +119,7 @@ services:
     volumes:
       - grandineconsensus-data:/var/lib/grandine
       - /etc/localtime:/etc/localtime:ro
-    entrypoint: ["/bin/sh","-c"]
+    entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         rm -rf /var/lib/grandine/${NETWORK}/beacon/*

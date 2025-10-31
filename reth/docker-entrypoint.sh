@@ -84,18 +84,13 @@ if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Reth archive node without pruning"
   __prune=""
 elif [ "${MINIMAL_NODE}" = "true" ]; then
-  __prune="--block-interval 5 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 10064 --prune.transactionlookup.distance=10064"
+  __prune="--block-interval 5 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 10064 --prune.transactionlookup.distance 10064"
   case ${NETWORK} in
-    mainnet )
-
+    mainnet|sepolia )
       echo "Reth minimal node with pre-merge history expiry"
-      __prune+=" --prune.bodies.pre-merge --prune.receipts.before 15537394"
+      __prune+=" --prune.bodies.pre-merge --prune.receipts.pre-merge"
       ;;
-    sepolia )
-      echo "Reth minimal node with pre-merge history expiry"
-      __prune+=" --prune.bodies.pre-merge --prune.receipts.before 1450409"
-      ;;
-    * )
+    *)
       echo "There is no pre-merge history for ${NETWORK} network, EL_MINIMAL_NODE has no effect."
       __prune+=" --prune.receipts.before 0"
       ;;
@@ -105,6 +100,18 @@ else
    echo "Reth full node without pre-merge history expiry"
   __prune="--block-interval 5 --prune.receipts.before 0 --prune.senderrecovery.full --prune.accounthistory.distance 10064 --prune.storagehistory.distance 10064"
   echo "Pruning parameters: ${__prune}"
+fi
+
+if [ -f /var/lib/reth/repair-trie ]; then
+  if [[ "${NETWORK}" =~ ^https?:// ]]; then
+    echo "Can't repair database on custom network"
+    rm "var/lib/reth/repair-trie"
+  else
+    rm "var/lib/reth/repair-trie"  # Remove first in case this panics
+    echo "Running Reth database trie repair. This may take up to 2 hours"
+# shellcheck disable=SC2086
+    reth db --chain "${NETWORK}" --datadir /var/lib/reth ${__static} repair-trie
+  fi
 fi
 
 if [ -f /var/lib/reth/prune-marker ]; then

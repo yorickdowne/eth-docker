@@ -1,19 +1,34 @@
+# hadolint global ignore=DL3007,DL3008,DL3018,DL3059,DL4006
 # Build in a stock Go build container
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Unused, this is here to avoid build time complaints
 ARG DOCKER_TAG
 ARG DOCKER_REPO
 
+RUN apk update && apk add --no-cache make gcc musl-dev linux-headers git bash
+
 ARG BUILD_TARGET
 ARG SRC_REPO
 
-RUN apk update && apk add --no-cache make gcc musl-dev linux-headers git bash
-
 WORKDIR /src
-RUN bash -c "git clone ${SRC_REPO} mev-boost && cd mev-boost && git config advice.detachedHead false && git fetch --all --tags && \
-if [[ ${BUILD_TARGET} =~ pr-.+ ]]; then git fetch origin pull/$(echo ${BUILD_TARGET} | cut -d '-' -f 2)/head:mev-pr; git checkout mev-pr; else git checkout ${BUILD_TARGET}; fi && \
-make build"
+
+ARG SRC_DIR=mev-boost
+RUN bash -eo pipefail <<'EOF'
+  git clone "$SRC_REPO" "$SRC_DIR"
+  cd "$SRC_DIR"
+  git config advice.detachedHead false
+  git fetch --all --tags
+  CLEANED=$(echo "$BUILD_TARGET" | sed 's/\$\$(/$(/g')
+  TARGET=$(eval echo "$CLEANED")
+  if [[ "$TARGET" =~ pr-.+ ]]; then
+    git fetch origin pull/$(echo "$TARGET" | cut -d '-' -f 2)/head:build-pr
+    git checkout build-pr
+  else
+    git checkout "$TARGET"
+  fi
+  make build
+EOF
 
 # Pull all binaries into a second stage deploy container
 FROM alpine:3

@@ -19,7 +19,7 @@ jobs:
       github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Create .env file
         run: cp default.env .env
       - name: Set Grandine/Nimbus EL
@@ -39,8 +39,8 @@ jobs:
         run: ./.github/check-service.sh execution
       - name: Test Grandine CL
         run: ./.github/check-service.sh consensus
-#      - name: Test Grandine VC
-#        run: ./.github/check-service.sh validator
+      # - name: Test Grandine VC
+      #   run: ./.github/check-service.sh validator
       - name: Set Grandine/Nimbus EL w/ Lighthouse VC
         run: |
           source ./.github/helper.sh

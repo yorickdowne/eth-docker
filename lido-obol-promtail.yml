@@ -23,4 +23,4 @@ services:
       - metrics.network=${NETWORK}
 
 volumes:
-    promtail-obol-data:
+  promtail-obol-data:

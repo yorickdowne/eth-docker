@@ -11,13 +11,13 @@ services:
     image: ${CB_PBS_DOCKER_REPO:-ghcr.io/commit-boost/pbs}:${CB_PBS_DOCKER_TAG:-latest}
     environment:
       CB_CONFIG: /cb-config.toml
-      CB_METRICS_PORT: 10000
     volumes:
-    - ./commit-boost/cb-config.toml:/cb-config.toml:ro
+      - ./commit-boost/cb-config.toml:/cb-config.toml:ro
     networks:
       default:
         aliases:
-          - ${MEV_ALIAS:-default-mev}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${MEV_ALIAS:-default-mev}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics

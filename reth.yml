@@ -32,8 +32,8 @@ services:
       - STATIC_DIR=${ANCIENT_DIR}
       # Make this RUST_LOG=${LOG_LEVEL:-info},engine=trace when requiring deep debug
       # RPC debug can be done with jsonrpsee=trace or jsonrpsee::target=trace for a specific target
-      - RUST_LOG=${LOG_LEVEL:-info}
-      - RUST_LOG_STYLE=never
+      # - RUST_LOG=${LOG_LEVEL:-info},engine=trace
+      # - RUST_LOG_STYLE=never
     volumes:
       - reth-el-data:/var/lib/reth
       - ${ANCIENT_DIR:-.nada}:/var/lib/static
@@ -47,7 +47,8 @@ services:
       default:
         aliases:
           - eth1
-          - ${EL_ALIAS:-default-execution}  # This allows multiple Eth Docker stacks all connected to the same bridge network
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${EL_ALIAS:-default-execution}
     <<: *logging
     entrypoint:
       - docker-entrypoint.sh
@@ -100,7 +101,7 @@ services:
     restart: "no"
     volumes:
       - reth-el-data:/var/lib/reth
-    entrypoint: ["/bin/sh","-c"]
+    entrypoint: ["/bin/sh", "-c"]
     command: /bin/sh
 
 volumes:

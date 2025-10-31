@@ -15,7 +15,7 @@ services:
       - 'benchmark'
       - '--consensus-addr=${CL_NODE}'
       - '--execution-addr=${EL_RPC_NODE}'
-      - '--ssv-addr=http://ssv-node:16000' # Change to your SSV Node's address with SSVAPIPort
+      - '--ssv-addr=http://ssv-node:16000'  # Change to your SSV Node's address with SSVAPIPort
       - '--duration=60m'
       - '--network=${NETWORK}'
       # - '--platform linux/arm64' # Add this if you run on an arm64 machine

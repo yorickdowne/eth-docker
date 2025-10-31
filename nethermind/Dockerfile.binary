@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3059
 ARG DOCKER_TAG=latest
 ARG DOCKER_REPO=nethermind/nethermind
 
@@ -14,7 +15,7 @@ ARG GID=10002
 
 RUN set -eux; \
 	apt-get update; \
-	DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y ca-certificates gosu tzdata wget git git-lfs adduser; \
+	DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends ca-certificates gosu tzdata wget git git-lfs adduser; \
 	rm -rf /var/lib/apt/lists/*; \
 # verify that the binary works
         gosu nobody true

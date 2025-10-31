@@ -7,12 +7,12 @@ scrape_configs:
     params:
       module: [default]
     static_configs:
-    - targets:
-      - https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd
+      - targets:
+          - https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd
     relabel_configs:
-    - source_labels: [__address__]
-      target_label: __param_target
-    - source_labels: [__param_target]
-      target_label: instance
-    - target_label: __address__
-      replacement: json-exporter:7979
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: json-exporter:7979

@@ -1,3 +1,4 @@
+# hadolint global ignore=DL3007,DL3008,DL3018,DL3059
 ARG DOCKER_TAG=stable
 ARG DOCKER_REPO=ethereum/client-go
 
