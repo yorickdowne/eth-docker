@@ -14,6 +14,18 @@ on:
 jobs:
   test-env-variations:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env-var:
+          - "MEV_BOOST=true MEV_BUILD_FACTOR="
+          - "MEV_BOOST=true MEV_BUILD_FACTOR=90"
+          - "MEV_BOOST=true MEV_BUILD_FACTOR=100"
+          - "MEV_BOOST=true MEV_BUILD_FACTOR=0"
+          - "CL_MAX_PEER_COUNT=100 CL_MIN_PEER_COUNT=20 EL_MAX_PEER_COUNT=10"
+          - IPV6=true
+          - IPV6=false
+          - EL_MINIMAL_NODE=false
+          - CHECKPOINT_SYNC_URL=
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -24,66 +36,16 @@ jobs:
         with:
           name: env-file
           path: .
-      - name: Set MEV Boost
+      - name: Set env variables
         run: |
           source ./.github/helper.sh
-          MEV_BOOST=true
-          var=MEV_BOOST
-          set_value_in_env
-      - name: Test the stack
-        uses: ./.github/actions/test_client_stack
-        with:
-          test_cl: ${{ inputs.test_cl }}
-          test_vc: ${{ inputs.test_vc }}
-          test_el: ${{ inputs.test_el }}
-      - name: Set MEV Factor 90
-        run: |
-          source ./.github/helper.sh
-          MEV_BUILD_FACTOR=90
-          var=MEV_BUILD_FACTOR
-          set_value_in_env
-      - name: Test the stack
-        uses: ./.github/actions/test_client_stack
-        with:
-          test_cl: ${{ inputs.test_cl }}
-          test_vc: ${{ inputs.test_vc }}
-          test_el: ${{ inputs.test_el }}
-      - name: Set MEV Factor 100
-        run: |
-          source ./.github/helper.sh
-          MEV_BUILD_FACTOR=100
-          var=MEV_BUILD_FACTOR
-          set_value_in_env
-      - name: Test the stack
-        uses: ./.github/actions/test_client_stack
-        with:
-          test_cl: ${{ inputs.test_cl }}
-          test_vc: ${{ inputs.test_vc }}
-          test_el: ${{ inputs.test_el }}
-      - name: Set MEV Factor 0
-        run: |
-          source ./.github/helper.sh
-          MEV_BUILD_FACTOR=0
-          var=MEV_BUILD_FACTOR
-          set_value_in_env
-      - name: Test the stack
-        uses: ./.github/actions/test_client_stack
-        with:
-          test_cl: ${{ inputs.test_cl }}
-          test_vc: ${{ inputs.test_vc }}
-          test_el: ${{ inputs.test_el }}
-      - name: Set CL and EL MAX and MIN peers
-        run: |
-          source ./.github/helper.sh
-          CL_MAX_PEER_COUNT=100
-          var=CL_MAX_PEER_COUNT
-          set_value_in_env
-          CL_MIN_PEER_COUNT=20
-          var=CL_MIN_PEER_COUNT
-          set_value_in_env
-          EL_MAX_PEER_COUNT=10
-          var=EL_MAX_PEER_COUNT
-          set_value_in_env
+          # Split key=value pairs if needed
+          for varpair in ${{ matrix.env-var }}; do
+            IFS="=" read var val <<< "$varpair"
+            export "$var=$val"
+            var=$var
+            set_value_in_env
+          done
       - name: Test the stack
         uses: ./.github/actions/test_client_stack
         with:
