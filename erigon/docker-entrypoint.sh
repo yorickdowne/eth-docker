@@ -86,7 +86,7 @@ elif [[ "${MINIMAL_NODE}" = "true" ]]; then
   esac
 else
   echo "Erigon full node without history expiry"
-  __prune="--prune.mode=blocks"
+  __prune="--prune.mode=blocks --prune.include-commitment-history"
 fi
 
 __caplin=""
