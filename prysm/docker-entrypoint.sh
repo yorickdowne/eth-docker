@@ -60,7 +60,7 @@ fi
 
 # Check whether we should rapid sync
 if [[ -n "${CHECKPOINT_SYNC_URL:+x}" ]]; then
-  __checkpoint_sync="--checkpoint-sync-url=${CHECKPOINT_SYNC_URL}"
+  __checkpoint_sync="--checkpoint-sync-url=${CHECKPOINT_SYNC_URL} --enable-backfill"
   echo "Checkpoint sync enabled"
 else
   __checkpoint_sync=""
@@ -79,10 +79,8 @@ if [[ "${ARCHIVE_NODE}" = "true" ]]; then
   echo "Prysm archive node without pruning"
   __prune="--slots-per-archive-point=32 --blob-retention-epochs=4294967295"
 elif [[ "${MINIMAL_NODE}" = "true" ]]; then
-#  echo "Prysm node with beacon DB pruning"
-#  __prune="--beacon-db-pruning"
-  echo "Prysm node's beacon DB pruning is buggy, not using it. New release expected late Nov 2025"
-  __prune=""
+  echo "Prysm node with beacon DB pruning"
+  __prune="--beacon-db-pruning"
 else
   echo "Prysm node without beacon DB pruning"
   __prune=""
