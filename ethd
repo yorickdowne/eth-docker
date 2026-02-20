@@ -1860,6 +1860,60 @@ __pull_and_build() {
   __docompose --profile tools build --pull
 }
 
+# Run optional pre-update hook script for custom actions before update/config.
+# Users can create pre-ethd-update.sh to run validation or preparation steps.
+__run_pre_update_script() {
+  local exitstatus
+  local pre_update_script
+
+  pre_update_script="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/pre-ethd-update.sh"
+  if [[ -f "${pre_update_script}" ]]; then
+    if [[ -x "${pre_update_script}" ]]; then
+      echo "[ethd] Running pre-ethd-update.sh..."
+      set +e
+      "${pre_update_script}"
+      exitstatus=$?
+      set -e
+      if [[ ${exitstatus} -ne 0 ]]; then
+        echo "[ethd] pre-ethd-update.sh exited with code ${exitstatus}"
+        echo "[ethd] Aborting due to pre-update script failure."
+        exit ${exitstatus}
+      fi
+    else
+      echo "[ethd] ERROR: pre-ethd-update.sh exists but is not executable."
+      echo "[ethd] Please make it executable with: chmod +x pre-ethd-update.sh"
+      echo "[ethd] Or remove it if it's not needed."
+      exit 1
+    fi
+  fi
+}
+
+
+# Run optional post-update hook script for custom actions after update/config.
+# Users can create post-ethd-update.sh to run additional setup steps.
+__run_post_update_script() {
+  local exitstatus
+  local post_update_script
+
+  post_update_script="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/post-ethd-update.sh"
+  if [[ -f "${post_update_script}" ]]; then
+    if [[ -x "${post_update_script}" ]]; then
+      echo "[ethd] Running post-ethd-update.sh..."
+      set +e
+      "${post_update_script}"
+      exitstatus=$?
+      set -e
+      if [[ ${exitstatus} -ne 0 ]]; then
+        echo "[ethd] post-ethd-update.sh exited with code ${exitstatus}"
+      fi
+    else
+      echo "[ethd] ERROR: post-ethd-update.sh exists but is not executable."
+      echo "[ethd] Please make it executable with: chmod +x post-ethd-update.sh"
+      echo "[ethd] Or remove it if it's not needed."
+    fi
+  fi
+}
+
 
 # Arguments are passed, but shellcheck doesn't recognize that
 # shellcheck disable=SC2120
@@ -1898,6 +1952,10 @@ update() {
   fi
 
   __during_update=1
+
+  if [[ -z "${ETHDSECUNDO:-}" ]]; then
+    __run_pre_update_script
+  fi
 
   if [[ $(${__as_owner} git status --porcelain) ]]; then
     dirty=1
@@ -2135,6 +2193,8 @@ reset to defaults."
   fi
 
   __during_update=0
+
+  __run_post_update_script
 }
 
 
@@ -4817,6 +4877,8 @@ config() {
   __during_config=1
   __final_msg=""
 
+  __run_pre_update_script
+
   __check_legacy
   __query_network
   __query_deployment
@@ -5218,6 +5280,8 @@ config() {
   echo "Your configuration file is: $(dirname "$(realpath "${BASH_SOURCE[0]}")")/${__env_file}"
   echo "You can change advanced config items with \"nano .env\" when in the $(dirname "$(realpath "${BASH_SOURCE[0]}")") directory."
   echo
+
+  __run_post_update_script
 }
 
 
