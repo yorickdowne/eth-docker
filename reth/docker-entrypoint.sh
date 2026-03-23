@@ -101,10 +101,10 @@ case "${NODE_TYPE}" in
     ;;
   full)
     echo "Reth full node without history expiry"
-    prune+=" --prune.receipts.before 0"
+    __prune+=" --prune.receipts.before 0"
     ;;
   pre-merge-expiry)
-    prune+=" --prune.transactionlookup.distance 10064"
+    __prune+=" --prune.transactionlookup.distance 10064"
     case ${NETWORK} in
       mainnet|sepolia)
         echo "Reth minimal node with pre-merge history expiry"
@@ -116,19 +116,23 @@ case "${NODE_TYPE}" in
         ;;
     esac
     ;;
-  pre-cancun-expiry)
-    prune+=" --prune.transactionlookup.distance 10064"
+  pre-prague-expiry)
+    __prune+=" --prune.transactionlookup.distance 10064"
     case "${NETWORK}" in
       mainnet)
-        echo "Reth minimal node with pre-Cancun history expiry"
-        __prune+=" --prune.bodies.before 19426587 --prune.receipts.before 19426587"
+        echo "Reth minimal node with pre-Prague history expiry"
+        __prune+=" --prune.bodies.before 22431084 --prune.receipts.before 22431084"
         ;;
       sepolia)
-        echo "Reth minimal node with pre-Cancun history expiry"
-        __prune+=" --prune.bodies.before 5187023 --prune.receipts.before 5187023"
+        echo "Reth minimal node with pre-Prague history expiry"
+        __prune+=" --prune.bodies.before 7836331 --prune.receipts.before 7836331"
+        ;;
+      hoodi)
+        echo "Reth minimal node with pre-Prague history expiry"
+        __prune+=" --prune.bodies.before 60412 --prune.receipts.before 60412"
         ;;
       *)
-        echo "There is no pre-Cancun history for ${NETWORK} network, \"pre-cancun-expiry\" has no effect."
+        echo "There is no pre-Prague history for ${NETWORK} network, \"pre-prague-expiry\" has no effect."
         __prune+=" --prune.receipts.before 0"
         ;;
     esac
