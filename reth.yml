@@ -89,6 +89,8 @@ services:
       - /var/lib/reth/ee-secret/jwtsecret
       - ${EL_MAX_PEER_COUNT:+--max-peers}
       - ${EL_MAX_PEER_COUNT:+${EL_MAX_PEER_COUNT}}
+      - ${MAX_BLOBS:+--builder.max-blobs}
+      - ${MAX_BLOBS:+${MAX_BLOBS}}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
