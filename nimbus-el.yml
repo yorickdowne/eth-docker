@@ -28,7 +28,6 @@ services:
       - NODE_TYPE=${EL_NODE_TYPE:-pre-merge-expiry}
       - NETWORK=${NETWORK}
       - ERA_URL=${ERA_URL:-}
-      - MAX_BLOBS=${MAX_BLOBS:-}
     volumes:
       - nimbus-el-data:/var/lib/nimbus
       - /etc/localtime:/etc/localtime:ro
@@ -63,6 +62,7 @@ services:
       - --engine-api-address=0.0.0.0
       - --engine-api-ws
       - ${EL_MAX_PEER_COUNT:+--max-peers=${EL_MAX_PEER_COUNT}}
+      - ${MAX_BLOBS:+--max-blobs=${MAX_BLOBS}}
       - --log-level=${LOG_LEVEL}
     labels:
       - metrics.scrape=true

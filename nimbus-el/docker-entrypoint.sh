@@ -194,15 +194,9 @@ fi
 #  rm -rf /var/lib/nimbus/era
 #fi
 
-if [[ -n "${MAX_BLOBS}" ]]; then
-  __blobs="--max-blobs=${MAX_BLOBS}"
-else
-  __blobs=""
-fi
-
 __strip_empty_args "$@"
 set -- "${__args[@]}"
 
 # Word splitting is desired for the command line parameters
 # shellcheck disable=SC2086
-exec "$@" ${__prune} ${__network} ${__blobs} ${EL_EXTRAS}
+exec "$@" ${__prune} ${__network} ${EL_EXTRAS}
