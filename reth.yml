@@ -32,6 +32,7 @@ services:
       - COMPOSE_FILE=${COMPOSE_FILE}
       - IPV6=${IPV6:-false}
       - EL_P2P_PORT_2=${EL_P2P_PORT_2:-30304}
+      - RETH_SNAPSHOT=${RETH_SNAPSHOT:-}
       # Make this RUST_LOG=${LOG_LEVEL:-info},engine=trace when requiring deep debug
       # RPC debug can be done with jsonrpsee=trace or jsonrpsee::target=trace for a specific target
       # - RUST_LOG=${LOG_LEVEL:-info},engine=trace
