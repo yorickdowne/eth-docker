@@ -46,7 +46,7 @@ RUN bash -eo pipefail <<'EOF'
   git fetch --all --tags
   CLEANED=$(echo "$BUILD_TARGET" | sed 's/\$\$(/$(/g')
   TARGET=$(eval echo "$CLEANED")
-  if [[ "$TARGET" =~ pr-.+ ]]; then
+  if [[ "$TARGET" =~ ^pr-[1-9][0-9]*$ ]]; then
     git fetch origin pull/$(echo "$TARGET" | cut -d '-' -f 2)/head:build-pr
     git checkout build-pr
   else
