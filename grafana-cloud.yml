@@ -42,6 +42,7 @@ services:
       - metrics.port=9090
       - metrics.instance=prometheus
       - metrics.network=${NETWORK}
+      - logs.collect=true
 
   ethereum-metrics-exporter:
     restart: "unless-stopped"
@@ -56,6 +57,7 @@ services:
       - metrics.path=/metrics
       - metrics.port=9090
       - metrics.instance=ethereum-metrics-exporter
+      - logs.collect=true
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -88,16 +90,19 @@ services:
       - metrics.port=${NODE_EXPORTER_PORT:-9199}
       - metrics.instance=node-exporter
       - metrics.network=${NETWORK}
+      - logs.collect=true
 
   blackbox-exporter:
     restart: "unless-stopped"
-    image: prom/blackbox-exporter:master
+    image: prom/blackbox-exporter:latest
     volumes:
       - ./prometheus/blackbox.yml:/config/blackbox.yml
       - /etc/localtime:/etc/localtime:ro
     command:
       - --config.file=/config/blackbox.yml
     <<: *logging
+    labels:
+      - logs.collect=true
 
   json-exporter:
     restart: "unless-stopped"
@@ -115,6 +120,7 @@ services:
       - metrics.port=7979
       - metrics.instance=json-exporter
       - metrics.network=${NETWORK}
+      - logs.collect=true
 
   cadvisor:
     restart: "unless-stopped"
@@ -138,28 +144,30 @@ services:
       - metrics.port=8080
       - metrics.instance=cadvisor
       - metrics.network=${NETWORK}
+      - logs.collect=true
 
-  promtail:
-    image: grafana/promtail:latest
-    user: root
+  alloy:
+    image: grafana/alloy:latest
+    restart: unless-stopped
     volumes:
-      - /etc/machine-id:/etc/machine-id:ro
-      - ./promtail:/etc/promtail
-      - promtail-data:/tmp
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${DOCKER_ROOT:-/var/lib/docker}/containers:/var/lib/docker/containers:ro,rslave
-    entrypoint: ./etc/promtail/entrypoint.sh
-    command: ["/usr/bin/promtail"]
-    environment:
-      SERVER_LABEL_HOSTNAME: ${LOGS_LABEL:-notset}
-    restart: "unless-stopped"
-    <<: *logging
+      - alloy-data:/var/lib/alloy
+    entrypoint:
+      - alloy
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
-      - metrics.port=9080
-      - metrics.instance=promtail
+      - metrics.port=12345
+      - metrics.instance=alloy
       - metrics.network=${NETWORK}
+      - logs.collect=true
 
 volumes:
   prom-data:
-  promtail-data:
+  alloy-data:

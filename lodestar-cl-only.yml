@@ -66,11 +66,11 @@ services:
       - ${CL_REST_PORT:-5052}
       - --port
       - ${CL_P2P_PORT:-9000}
-# BUGBUG
-# Library is bugged; re-enable with Lodestar 1.42.0
-#      - --quicPort
-#      - ${CL_QUIC_PORT:-9001}
-#      - --quic
+      # BUGBUG
+      # Library is bugged; re-enable with Lodestar 1.42.0
+      # - --quicPort
+      # - ${CL_QUIC_PORT:-9001}
+      # - --quic
       - --nat
       - --metrics
       - "true"
@@ -94,6 +94,7 @@ services:
       - metrics.port=8008
       - metrics.instance=consensus
       - metrics.network=${NETWORK}
+      - logs.collect=true
 
 volumes:
   lsconsensus-data:

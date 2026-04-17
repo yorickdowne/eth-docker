@@ -165,7 +165,7 @@ __handle_docker() {
     echo "Will use sudo to access Docker"
     __docker_sudo="sudo"
   fi
-  if [[ -f "${__env_file}" && "${__distro}" =~ (debian|ubuntu) ]] && ! grep -qi microsoft /proc/version; then
+  if [[ -f "${__env_file}" && "${__distro}" =~ (debian|ubuntu) ]]; then
     DOCKER_ROOT=$(__dodocker system info --format '{{.DockerRootDir}}')
     var=DOCKER_ROOT
     __update_value_in_env "${var}" "${!var}" "${__env_file}"
@@ -453,18 +453,16 @@ __check_compose_version() {
 
 
 __prep_conffiles() {
-# Create custom-prom.yml if it doesn't exist
-  if [[ ! -f "./prometheus/custom-prom.yml" ]]; then
-    ${__as_owner} touch "./prometheus/custom-prom.yml"
+# Create prometheus.yml if it doesn't exist
+  if [[ ! -f ./prometheus/prometheus.yml ]]; then
+    ${__as_owner} cp ./prometheus/prometheus.yml.sample ./prometheus/prometheus.yml
   fi
-# Make sure the prometheus dir and its contents are accessible to user nobody
-  if find prometheus -type d \! -perm 755 | grep -q .; then
-    find prometheus -type d -exec chmod 755 {} \;
+# Create config.alloy if it doesn't exist
+  if [[ ! -f "alloy/config.alloy" ]]; then
+    ${__as_owner} cp alloy/config.alloy.sample alloy/config.alloy
   fi
-  if find prometheus -name '*.yml' \! -perm 664 | grep -q .; then
-    find prometheus -name '*.yml' -exec chmod 664 {} \;
-  fi
-# Create config.yaml if it doesn't exist
+
+# Create SSV config.yaml if it doesn't exist
   if [[ ! -f "ssv-config/config.yaml" ]]; then
     ${__as_owner} cp ssv-config/config.yaml.sample ssv-config/config.yaml
   fi
@@ -4180,6 +4178,12 @@ __query_consensus_client() {
     choices+=("caplin.yml" "Caplin (Go) - Erigon's built-in CL")
   elif [[ "${arch}" =~ riscv64 ]]; then
     choices+=("nimbus.yml" "Nimbus (Nim) - consensus and validator client")
+  elif [[ "${__deployment}" = "lido_obol" ]]; then
+    choices+=("lodestar.yml" "Lodestar (TypeScript) - consensus and validator client")
+    choices+=("nimbus.yml" "Nimbus (Nim) - consensus and validator client")
+    choices+=("teku.yml" "Teku (Java) - consensus and validator client")
+    choices+=("lighthouse.yml" "Lighthouse (Rust) - consensus and validator client")
+    choices+=("prysm.yml" "Prysm (Go) - consensus and validator client")
   else
     choices+=("teku.yml" "Teku (Java) - consensus and validator client")
     choices+=("grandine-allin1.yml" "Grandine (Rust) - consensus with built-in validator client")
@@ -4474,7 +4478,7 @@ __query_web3signer() {
 __query_grafana() {
   if whiptail --title "Grafana" --yesno "Do you want to use Grafana dashboards?" 10 65; then
       if [[ "$OSTYPE" = "darwin"* ]]; then
-      # macOS doesn't do well with / bind mount - leave node-exporter, cadvisor and loki/promtail off by default
+      # macOS doesn't do well with / bind mount - leave node-exporter, cadvisor and loki/alloy off by default
         CORE_FILES+=":grafana-rootless.yml:grafana-shared.yml"
       else
         CORE_FILES+=":grafana.yml:grafana-shared.yml"
@@ -5594,18 +5598,18 @@ __config_lido_obol() {
 (right-click to paste)" 10 60 3>&1 1>&2 2>&3)
   if [[ -n "${OBOL_CHARON_REMOTE_LOKI_ADDRESSES}" ]]; then
     OBOL_CLUSTER_NAME=$(whiptail --title "Obol cluster name" --inputbox "What is your Obol cluster name? \
-(right-click to paste)" 10 60 "${__project_name}" 3>&1 1>&2 2>&3)
+(right-click to paste)" 10 60 3>&1 1>&2 2>&3)
     OBOL_CLUSTER_PEER=$(whiptail --title "Obol cluster peer" --inputbox "What is your Obol cluster peer name? \
-(right-click to paste)" 10 60 "eth-docker" 3>&1 1>&2 2>&3)
+(right-click to paste)" 10 60 3>&1 1>&2 2>&3)
   else
     OBOL_CLUSTER_NAME=""
     OBOL_CLUSTER_PEER=""
-    echo "Obol Loki remote URL is empty, skipping promtail"
+    echo "Obol Loki remote URL is empty, skipping alloy"
   fi
 
   CORE_FILES+=":lido-obol.yml"
   if [[ -n "${OBOL_CHARON_REMOTE_LOKI_ADDRESSES}" ]]; then
-    CORE_FILES+=":lido-obol-promtail.yml"
+    CORE_FILES+=":lido-obol-alloy.yml"
   fi
 }
 

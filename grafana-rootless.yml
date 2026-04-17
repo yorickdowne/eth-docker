@@ -1,4 +1,4 @@
-# Grafana for use with rootless docker. Omits node-exporter, cadvisor, promtail and Loki
+# Grafana for use with rootless docker. Omits node-exporter, cadvisor, alloy and Loki
 x-logging: &logging
   logging:
     driver: json-file
@@ -45,7 +45,7 @@ services:
 
   blackbox-exporter:
     restart: "unless-stopped"
-    image: prom/blackbox-exporter:master
+    image: prom/blackbox-exporter:latest
     volumes:
       - ./prometheus/blackbox.yml:/config/blackbox.yml
       - /etc/localtime:/etc/localtime:ro
