@@ -167,6 +167,15 @@ case "${NODE_TYPE}" in
     ;;
 esac
 
+# Adjust __snap to be empty if user doesn't want snapshots, or left as-is if they provided custom parameters. If "true" and we're not on mainnet, disable snapshots
+if [[ "${RETH_SNAPSHOT}" = "false" || -z "${RETH_SNAPSHOT}" ]]; then
+  __snap=""
+elif [[ "${RETH_SNAPSHOT}" != "true" ]]; then
+  __snap="${RETH_SNAPSHOT}"
+elif [[ "${NETWORK}" != "mainnet" ]]; then
+  __snap=""
+fi
+
 if [[ -n "${__prune}" ]]; then
   echo "Pruning parameters: ${__prune}"
 fi
@@ -200,14 +209,8 @@ else
   __ipv6=""
 fi
 
-# Snapshot
-# Reth 2.1.0
-# if [[ ! -d /var/lib/reth/db && "${NETWORK}" = "mainnet" && -n "${RETH_SNAPSHOT}" && ! "${RETH_SNAPSHOT}" = "false" ]]; then
-if [[ ! -d /var/lib/reth/db && ! "${NODE_TYPE}" = "full" && "${NETWORK}" = "mainnet" && -n "${RETH_SNAPSHOT}" \
-      && ! "${RETH_SNAPSHOT}" = "false" ]]; then
-  if [[ ! "${RETH_SNAPSHOT}" = "true" ]]; then
-    __snap="${RETH_SNAPSHOT}"
-  fi
+# Download snapshot if this is a fresh sync
+if [[ -n "${__snap}" && ! -d /var/lib/reth/db ]]; then
   echo "Downloading Reth snapshot with parameters: ${__snap}"
 # Word splitting is desired for the command line parameters
 # shellcheck disable=SC2086
