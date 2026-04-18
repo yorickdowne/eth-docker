@@ -16,6 +16,11 @@ __normalize_int() {
 }
 
 
+# Set keymanager API token permissions
+if [[ -f /var/lib/vero/keymanager-api-token.txt ]]; then
+  chmod 600 /var/lib/vero/keymanager-api-token.txt
+fi
+
 if [[ "${NETWORK}" =~ ^https?:// ]]; then
   echo "Custom testnet at ${NETWORK}"
   repo=$(awk -F'/tree/' '{print $1}' <<< "${NETWORK}")
