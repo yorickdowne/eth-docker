@@ -2,9 +2,12 @@ name: Lint sources
 run-name: Lint sources
 
 on:
-  push:
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
