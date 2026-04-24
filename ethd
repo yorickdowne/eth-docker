@@ -2781,6 +2781,14 @@ prune-nethermind() {
     exit 1
   fi
 
+  # Check for FlatDB
+  var="NETHERMIND_FLATDB"
+  __get_value_from_env "${var}" "${__env_file}" "__value"
+  if [[ -n "${__value}" ]]; then
+    echo "Nethermind is configured for FlatDB, which cannot be pruned. Aborting."
+    exit 1
+  fi
+
   __get_docker_free_space
 
   var="NETWORK"
