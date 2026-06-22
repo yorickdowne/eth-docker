@@ -25,7 +25,12 @@ services:
       - NODE_OPTIONS="--dns-result-order=ipv4first"
     <<: *logging
     entrypoint:
-      - docker-entrypoint.sh
+      - /bin/bash
+      - -c
+    command:
+      - |
+        export BEACON_URL="$${BEACON_URL%%,*}"
+        exec /app/docker-assets/docker-entrypoint.sh
     labels:
       - traefik.enable=true
       - traefik.http.routers.$(SIREN_HOST:-siren}.service=${SIREN_HOST:-siren}
