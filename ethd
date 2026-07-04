@@ -2698,6 +2698,8 @@ reset to defaults."
     echo "Please make sure to run compatible client versions."
   fi
 
+  __write_eth_docker_version_metric
+
   if [[ ! "$OSTYPE" = "darwin"* ]]; then
 # Release lock and remove lock file
     exec 200<&-
@@ -4322,12 +4324,69 @@ __adjust_grandine_permissions() {
 }
 
 
+# Writes the currently checked-out Eth Docker version as a node-exporter
+# textfile-collector metric (see grafana.yml), so it can be tracked the same
+# way the EL/CL client versions already are. "tag" comes from README.md's
+# "This is Eth Docker vX.Y.Z" line (the same source `version` reads). A
+# release commit bumps that line straight to "vX.Y.Z-dev" for the next
+# version, so this stays accurate on main between releases. Writes into
+# the same host directory node-exporter's textfile collector is already
+# mounted from (NODE_EXPORTER_COLLECTOR_MOUNT_PATH, defaulting to
+# ./prometheus/node-exporter-text) - that mount is read-only inside the
+# container, so the file has to land there from the host side.
+__write_eth_docker_version_metric() {
+  local tag
+  local commit
+  local var
+  local textfile_dir
+
+  tag=$(grep -m1 "^This is ${__project_name} v" README.md 2>/dev/null | sed -E "s/^This is ${__project_name} //") || tag=""
+  commit=$(${__as_owner} git rev-parse --short HEAD 2>/dev/null) || commit=""
+
+  var=NODE_EXPORTER_COLLECTOR_MOUNT_PATH
+  __get_value_from_env "${var}" "${__env_file}" "__value"
+  textfile_dir="${__value:-./prometheus/node-exporter-text}"
+
+  ${__as_owner} mkdir -p "${textfile_dir}"
+  {
+    echo "# HELP eth_docker_version_info Currently checked out ${__project_name} version"
+    echo "# TYPE eth_docker_version_info gauge"
+    echo "eth_docker_version_info{tag=\"${tag}\",commit=\"${commit}\"} 1"
+  } | ${__as_owner} tee "${textfile_dir}/eth-docker-version.prom.tmp" >/dev/null
+  ${__as_owner} mv "${textfile_dir}/eth-docker-version.prom.tmp" "${textfile_dir}/eth-docker-version.prom"
+}
+
+
+# Sets ALLOY_PROJECT_NAME in .env so config.alloy can scope Alloy's Docker
+# service discovery to this install's own containers (see grafana.yml). When
+# ALLOY_FILTER_BY_PROJECT_NAME is true, the name is read back from Compose's
+# own resolution (docker compose config), never computed independently and
+# never written to COMPOSE_PROJECT_NAME. Otherwise it is cleared, and Alloy
+# coalesces the empty value to ".*" - the scrape-all default. Runs on every
+# start so toggling ALLOY_FILTER_BY_PROJECT_NAME takes effect on the next up.
+__set_alloy_project_name() {
+  local var
+
+  var=ALLOY_FILTER_BY_PROJECT_NAME
+  __get_value_from_env "${var}" "${__env_file}" "__value"
+  if [[ "${__value}" = "true" ]]; then
+    ALLOY_PROJECT_NAME=$(__docompose config 2>/dev/null | awk -F': ' '/^name:/{print $2; exit}') || ALLOY_PROJECT_NAME=""
+  else
+    ALLOY_PROJECT_NAME=""
+  fi
+
+  var=ALLOY_PROJECT_NAME
+  __update_value_in_env "${var}" "${!var}" "${__env_file}"
+}
+
+
 upgrade() {
   update
 }
 
 
 start() {
+  __set_alloy_project_name
   __adjust_grandine_permissions
   __docompose up -d --remove-orphans "$@"
 }
