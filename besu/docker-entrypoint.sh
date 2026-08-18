@@ -118,7 +118,7 @@ fi
 # DiscV5 for IPV6
 if [[ "${IPV6:-false}" = "true" ]]; then
   echo "Configuring Besu for discv5 for IPv6 advertisements"
-  __ipv6="--Xv5-discovery-enabled --p2p-interface-ipv6=:: --p2p-port-ipv6=${EL_P2P_PORT_2} --p2p-ipv6-outbound-enabled"
+  __ipv6="--p2p-interface-ipv6=:: --p2p-port-ipv6=${EL_P2P_PORT_2} --p2p-ipv6-outbound-enabled"
 # Address discovery on v6 is not implemented
   ipv6_pattern="^[0-9A-Fa-f]{1,4}:" # Sufficient to check the start
   set +e
