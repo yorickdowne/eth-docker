@@ -81,29 +81,31 @@ else
   __network="--config ${NETWORK}"
 fi
 
-if [[ "${NODE_TYPE}" = "archive" ]]; then
-  __flat=""
-else
-  case "${NM_FLATDB}" in
-    "")
-      __flat=""
-      ;;
-    flat)
-      echo "Enabling Nethermind FlatDB with Layout Flat"
-      #__flat="--FlatDb.Enabled=true --FlatDb.ImportFromPruningTrieState=true"
-      __flat="--FlatDb.Enabled=true"
-      ;;
-    flatintrie)
-      echo "Enabling Nethermind FlatDB with Layout FlatInTrie"
-      #__flat="--FlatDb.Enabled=true --FlatDb.ImportFromPruningTrieState=true --FlatDb.Layout=FlatInTrie"
-      __flat="--FlatDb.Enabled=true --FlatDb.Layout=FlatInTrie"
-      ;;
-    *)
-      __flat=""
-      echo "Unknown value ${NM_FLATDB} for \"NETHERMIND_FLATDB\". Continuing without FlatDB."
-      ;;
-  esac
-fi
+case "${NM_FLATDB}" in
+  "")
+    __flat=""
+    if [[ ! "${EL_EXTRAS}" =~ (--flatdb-enabled|--FlatDb.Enabled) ]]; then
+      echo "Nethermind HalfPath DB"
+      if [[ "${NODE_TYPE}" = "archive" && ! -f /var/lib/nethermind/flat-archive && ( -d /var/lib/nethermind/nethermind_db || -d /var/lib/nethermind-og/nethermind_db ) ]]; then
+        echo "This is an archive node: Consider a FlatDB instead"
+      fi
+    else
+      echo "Nethermind FlatDB via EL_EXTRAS"
+    fi
+    ;;
+  flat)
+    __flat="--FlatDb.Enabled=true"
+    echo "Enabling Nethermind FlatDB with Layout Flat"
+    ;;
+  flatintrie)
+    __flat="--FlatDb.Enabled=true --FlatDb.Layout=FlatInTrie"
+    echo "Enabling Nethermind FlatDB with Layout FlatInTrie"
+    ;;
+  *)
+    __flat=""
+    echo "Unknown value ${NM_FLATDB} for \"NETHERMIND_FLATDB\". Continuing without FlatDB."
+    ;;
+esac
 
 if [[ ! "${NETWORK}" =~ ^https?:// && "${NODE_TYPE}" != "archive" && -z "${__flat}" ]]; then  # Only configure prune parameters for named networks, non-archive and HalfPath DB
   memtotal=$(awk '/MemTotal/ {printf "%d", int($2/1024/1024)}' /proc/meminfo)
@@ -127,8 +129,24 @@ fi
 
 case "${NODE_TYPE}" in
   archive)
-    echo "Nethermind archive node without pruning"
-    __prune="--Sync.DownloadBodiesInFastSync=false --Sync.DownloadReceiptsInFastSync=false --Sync.FastSync=false --Sync.SnapSync=false --Sync.FastBlocks=false --Pruning.Mode=None --Sync.PivotNumber=0"
+    if [[ ! -d /var/lib/nethermind/nethermind_db && ! -d /var/lib/nethermind-og/nethermind_db ]]; then
+      touch /var/lib/nethermind/flat-archive
+    fi
+    if [[ -f /var/lib/nethermind/flat-archive || -n "${__flat}" ]]; then
+      __prune="--Sync.AncientBodiesBarrier=0 --Sync.AncientReceiptsBarrier=0"
+      if [[ ! -f /var/lib/nethermind/flat-archive ]]; then
+        touch /var/lib/nethermind/flat-archive
+      fi
+      if [[ -z "${flat}" ]]; then
+        __flat="--FlatDb.Enabled=true"
+      fi
+      __flat+=" --FlatDb.HistoryEnabled=true"
+      echo "Nethermind FlatDB archive node without pruning"
+    else
+      echo "Nethermind legacy archive node without pruning"
+      echo "Consider a FlatDB archive node instead"
+      __prune="--Sync.DownloadBodiesInFastSync=false --Sync.DownloadReceiptsInFastSync=false --Sync.FastSync=false --Sync.SnapSync=false --Sync.FastBlocks=false --Pruning.Mode=None --Sync.PivotNumber=0"
+    fi
     __ere_from=0
     ;;
   full)
