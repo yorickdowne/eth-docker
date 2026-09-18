@@ -1793,7 +1793,7 @@ port-check() {
     detail=0
     __host_has_v6 || detail=$?
     case "${detail}" in
-      0) dual_stack="off, but this host has IPv6 - \"${__me} config\" can turn it on";;
+      0) dual_stack="off, but this host has IPv6 - \"IPV6=true\" in \".env\" can turn it on";;
       1) dual_stack="off, and this host has no IPv6 connectivity";;
       *) dual_stack="off (IPV6=false)";;
     esac
