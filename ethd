@@ -1375,24 +1375,43 @@ __cl_api_query() {
 }
 
 
-__count_peers() {
-# Call with the body of a node/peers response. Echoes the number of peers in it.
+__peer_entries() {
+# Call with the body of a node/peers response. Echoes one peer object per line.
+# A peer object has no nested objects, so splitting on "{" cannot split one in two.
   local body="$1"
-  local regex='"count"[[:space:]]*:[[:space:]]*"?([0-9]+)'
 
-  if [[ "${body}" =~ ${regex} ]]; then
-    echo "${BASH_REMATCH[1]}"
-  else  # A client that does not send "meta": count the peers instead
-    grep -o '"peer_id"' <<< "${body}" | wc -l | tr -d ' '
-  fi
+  tr '\n' ' ' <<< "${body}" | tr '{' '\n' | grep '"peer_id"' || true
+}
+
+
+__peers_in_direction() {
+# Call with peer entries and "inbound" or "outbound". Echoes the connected ones.
+# Teku and Grandine ignore the state and direction query parameters the Beacon API
+# spec defines, so the filtering happens here rather than in the request. A peer is
+# dropped only when it says it is not connected, so a client that omits "state" counts.
+  local entries="$1"
+  local want="$2"
+
+  grep -E "\"direction\"[[:space:]]*:[[:space:]]*\"${want}\"" <<< "${entries}" \
+    | grep -Ev '"state"[[:space:]]*:[[:space:]]*"(disconnected|disconnecting|connecting)"' || true
+}
+
+
+__count_lines() {
+# Call with newline-separated text. Echoes the number of non-empty lines.
+  local text="$1"
+
+  grep -c . <<< "${text}" || true
 }
 
 
 __peer_addresses() {
-# Call with the body of a node/peers response. Echoes one peer multiaddr per line.
-  local body="$1"
+# Call with peer entries. Echoes one peer multiaddr per line. A client may leave the
+# address off a peer, so there can be fewer addresses than entries.
+  local entries="$1"
 
-  grep -o '"last_seen_p2p_address":"[^"]*"' <<< "${body}" | cut -d'"' -f4 || true
+  grep -oE '"last_seen_p2p_address"[[:space:]]*:[[:space:]]*"[^"]*"' <<< "${entries}" \
+    | sed 's/.*"\([^"]*\)"$/\1/' || true
 }
 
 
@@ -1642,6 +1661,7 @@ port-check() {
   local listens_v4=0
   local listens_v6=0
   local local_v4 gateway_v4
+  local peer_entries inbound_entries outbound_entries
   local inbound_addresses outbound_addresses
   local inbound outbound inbound_v6
   local cgnat dual_stack
@@ -1723,19 +1743,26 @@ port-check() {
 
   read -r local_v4 gateway_v4 <<< "$(__local_v4_route)"
 
-  if ! __cl_api_query "/eth/v1/node/peers?state=connected&direction=inbound"; then
+  # Ask for every peer and sort them out here. Not every client honours the state and
+  # direction query parameters, and one that ignores them answers both directions with
+  # the same full list, which reads as a perfectly symmetrical - and wrong - table.
+  if ! __cl_api_query "/eth/v1/node/peers"; then
     echo "Unable to list peers. Is ${cl_client} still starting up?"
     return 1
   fi
-  inbound=$(__count_peers "${__cl_api_body}")
-  inbound_addresses=$(__peer_addresses "${__cl_api_body}")
-  inbound_v6=$(__count_matching "${inbound_addresses}" '/ip6/')
-  if __cl_api_query "/eth/v1/node/peers?state=connected&direction=outbound"; then
-    outbound=$(__count_peers "${__cl_api_body}")
-    outbound_addresses=$(__peer_addresses "${__cl_api_body}")
-  else
+  peer_entries=$(__peer_entries "${__cl_api_body}")
+  if [[ -n "${peer_entries}" ]] && ! grep -q '"direction"' <<< "${peer_entries}"; then
+    inbound="?"  # A client that does not tell us which way a peer was dialed
     outbound="?"
+  else
+    inbound_entries=$(__peers_in_direction "${peer_entries}" inbound)
+    outbound_entries=$(__peers_in_direction "${peer_entries}" outbound)
+    inbound=$(__count_lines "${inbound_entries}")
+    outbound=$(__count_lines "${outbound_entries}")
+    inbound_addresses=$(__peer_addresses "${inbound_entries}")
+    outbound_addresses=$(__peer_addresses "${outbound_entries}")
   fi
+  inbound_v6=$(__count_matching "${inbound_addresses}" '/ip6/')
 
   # Carrier-grade NAT can be proven from this host, but never ruled out from it
   if [[ -n "${ip4}" ]] && __is_cgnat_v4 "${ip4}"; then
@@ -1797,7 +1824,9 @@ port-check() {
 
   peers="you dialed ${outbound}"
   [[ "${outbound}" = "?" ]] && peers=""
-  if [[ "${inbound}" -eq 1 ]]; then
+  if [[ "${inbound}" = "?" ]]; then
+    detail="cannot tell - ${cl_client} does not report peer direction"
+  elif [[ "${inbound}" -eq 1 ]]; then
     detail="working - 1 peer dialed you"
   elif [[ "${inbound}" -gt 0 ]]; then
     detail="working - ${inbound} peers dialed you"
@@ -1808,7 +1837,7 @@ port-check() {
 
   # Zeros are the truth when there are no peers in that direction. A client that reports
   # peers but no addresses for them is the one case where a row would lie, so it gets none.
-  [[ -n "${inbound_addresses}" || "${inbound}" -eq 0 ]] && show_inbound=1
+  [[ -n "${inbound_addresses}" || "${inbound}" = "0" ]] && show_inbound=1
   [[ -n "${outbound_addresses}" || "${outbound}" = "0" ]] && show_outbound=1
   if [[ "${show_inbound}" -eq 1 || "${show_outbound}" -eq 1 ]]; then
     printf '  %-12s %-10s %8s %8s %8s %8s\n' "Peers" "direction" "QUIC v4" "QUIC v6" "TCP v4" "TCP v6"
@@ -1818,7 +1847,7 @@ port-check() {
   fi
   echo
 
-  if [[ "${inbound}" -gt 0 ]]; then
+  if [[ "${inbound}" = "?" ]] || [[ "${inbound}" -gt 0 ]]; then
     return 0
   fi
 

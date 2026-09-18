@@ -123,3 +123,5 @@ Test scenarios
 
 - `./ethd port-check` on a node with no inbound peers: the discv5 and QUIC probe commands print, and both run clean when pasted on another machine with Docker
 - `./ethd port-check` on a dual-stack node: the IPv6 pair prints as well, creating an `ethd-v6-probe` docker network instead of using `--network host`
+- `./ethd port-check` on Teku or Grandine: the inbound and outbound rows must not be identical. Both clients ignore the `state` and `direction` query parameters on `/eth/v1/node/peers`, so a mirrored table means the direction split regressed to trusting the API's filters
+- Cross-check the counts against the client's own gauge, which is the independent source of truth: `./ethd cmd exec consensus sh -c 'wget -qO- http://localhost:8008/metrics' | grep beacon_peer_count` for Teku, the equivalent gauge for other clients
