@@ -85,6 +85,43 @@ __docompose() {
 }
 
 
+__compose_network_name() {
+# Echoes the name of this stack's Compose network, as Compose itself resolves it.
+  __docompose config | awk '
+    BEGIN {
+        found_networks=0;
+        found_default=0;
+    }
+    /networks:/ {
+        found_networks=1;
+        next;
+    }
+    found_networks && /default:/ {
+        found_default=1;
+        next;
+    }
+    found_default && /^ *name:/ {
+        print $2;
+        exit;
+    }
+    '
+}
+
+
+__ensure_vc_utils_image() {
+# Builds the vc-utils:local image when it is not already present.
+  __dodocker image ls --format "{{.Repository}}:{{.Tag}}" | grep -q "vc-utils:local" && return 0
+  if ! dpkg-query -W -f='${Status}' docker-ce 2>/dev/null | grep -q "ok installed"; then
+    __dodocker build -t vc-utils:local ./vc-utils
+  else
+    if ! dpkg-query -W -f='${Status}' docker-buildx-plugin 2>/dev/null | grep -q "ok installed"; then
+      ${__auto_sudo} apt-get update && ${__auto_sudo} apt-get install -y docker-buildx-plugin
+    fi
+    __dodocker buildx build -t vc-utils:local ./vc-utils
+  fi
+}
+
+
 __determine_distro() {
   local uname
 
@@ -1312,6 +1349,8 @@ __cl_api_query() {
   local url="http://localhost:${__cl_rest_port}${path}"
   local errexit=0
   local exitstatus
+  local network_name
+  local cl_host
 
   # Not every client image ships both wget and curl, so try either one
   [[ "$-" =~ e ]] && errexit=1
@@ -1319,6 +1358,18 @@ __cl_api_query() {
   __cl_api_body=$(__docompose exec -T "${__cl_service}" sh -c \
     "wget -qO- '${url}' 2>/dev/null || curl -sf '${url}'" 2>/dev/null)
   exitstatus=$?
+  if [[ "${exitstatus}" -ne 0 ]]; then
+    # Some images, such as Lodestar's, ship neither. Fall back to a throwaway
+    # container with curl, on the stack's own network, reaching the client by
+    # its CL_ALIAS/EL_ALIAS network alias instead of localhost.
+    __ensure_vc_utils_image
+    network_name=$(__compose_network_name)
+    cl_host="${__cl_alias}"
+    [[ "${__cl_service}" = "execution" ]] && cl_host="${__el_alias}"
+    __cl_api_body=$(__dodocker run --rm --network "${network_name}" \
+      vc-utils:local curl -sf -m 10 "http://${cl_host}:${__cl_rest_port}${path}" 2>/dev/null)
+    exitstatus=$?
+  fi
   [[ "${errexit}" -eq 1 ]] && set -e
   return "${exitstatus}"
 }
@@ -1576,6 +1627,7 @@ EOF
 port-check() {
   local var
   local cl_client
+  local network
   local p2p_port
   local quic_port
   local ipv6
@@ -1599,6 +1651,8 @@ port-check() {
   __cl_rest_port=""
   __cl_service=""
   __cl_api_body=""
+  __cl_alias=""
+  __el_alias=""
 
   # Caplin and the Grandine plugin run inside the execution client and serve the
   # Beacon API from there. Every other consensus client has its own service.
@@ -1629,6 +1683,16 @@ port-check() {
   quic_port="${quic_port:-9001}"
   var="IPV6"
   __get_value_from_env "${var}" "${__env_file}" "ipv6"
+  var="NETWORK"
+  __get_value_from_env "${var}" "${__env_file}" "network"
+  var="CL_ALIAS"
+  __get_value_from_env "${var}" "${__env_file}" "__cl_alias"
+  __cl_alias="${__cl_alias:-default-consensus}"
+  __cl_alias="${__cl_alias//\$\{NETWORK\}/${network}}"
+  var="EL_ALIAS"
+  __get_value_from_env "${var}" "${__env_file}" "__el_alias"
+  __el_alias="${__el_alias:-default-execution}"
+  __el_alias="${__el_alias//\$\{NETWORK\}/${network}}"
 
   if ! __cl_api_query "/eth/v1/node/identity"; then
     echo "Unable to reach ${cl_client}'s Beacon API on port ${__cl_rest_port}. Is it running?"
@@ -5001,34 +5065,8 @@ keys() {
     var="CL_NODE"
     __get_value_from_env "${var}" "${__env_file}" "CL_NODE"
     CL_NODE="${CL_NODE%%,*}"
-    network_name="$(__docompose config | awk '
-      BEGIN {
-          found_networks=0;
-          found_default=0;
-      }
-      /networks:/ {
-          found_networks=1;
-          next;
-      }
-      found_networks && /default:/ {
-          found_default=1;
-          next;
-      }
-      found_default && /^ *name:/ {
-          print $2;
-          exit;
-      }
-      ')"
-    if ! __dodocker image ls --format "{{.Repository}}:{{.Tag}}" | grep -q "vc-utils:local"; then
-      if ! dpkg-query -W -f='${Status}' docker-ce 2>/dev/null | grep -q "ok installed"; then
-        __dodocker build -t vc-utils:local ./vc-utils
-      else
-        if ! dpkg-query -W -f='${Status}' docker-buildx-plugin 2>/dev/null | grep -q "ok installed"; then
-          ${__auto_sudo} apt-get update && ${__auto_sudo} apt-get install -y docker-buildx-plugin
-        fi
-        __dodocker buildx build -t vc-utils:local ./vc-utils
-      fi
-    fi
+    network_name="$(__compose_network_name)"
+    __ensure_vc_utils_image
     __dodocker run --rm \
       -u 1000:1000 \
       --network "${network_name}" \
