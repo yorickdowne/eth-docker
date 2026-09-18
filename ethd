@@ -1528,12 +1528,58 @@ __host_has_v6() {
 }
 
 
+__probe_discv5() {
+# Call with the node's ENR, the address to test - an IPv6 address in brackets - and a UDP
+# port. Echoes a self-contained docker command that pings discv5 at that address.
+  local enr="$1"
+  local ip="$2"
+  local port="$3"
+  local network=""
+
+  # Docker's default bridge has no IPv6, so a v6 probe needs the host's own stack
+  [[ "${ip}" = *:* ]] && network=" --network host"
+
+  cat <<EOF
+  docker run --rm${network} -e IP="${ip}" -e PORT="${port}" ethereum/client-go:alltools-latest sh -c '
+    pk=\$(devp2p enrdump ${enr} | sed -n "s#^URLv4:.*enode://\\([0-9a-f]*\\).*#\\1#p")
+    out=\$(devp2p discv5 ping "enode://\${pk}@\${IP}:\${PORT}" 2>&1 | tail -n1)
+    if [ "\$out" = "<nil>" ]; then echo "PASS - \$IP:\$PORT is reachable over discv5"; else echo "FAIL - \$IP:\$PORT - \$out"; fi
+  '
+EOF
+}
+
+
+__probe_quic() {
+# Call with the address to test - an IPv6 address without brackets, as quicmap wants a bare
+# host - and a UDP port. Echoes a self-contained docker command that probes QUIC there.
+  local ip="$1"
+  local port="$2"
+  local network=""
+  local show="\$IP:\$PORT"
+
+  [[ "${ip}" = *:* ]] && { network=" --network host"; show="[\$IP]:\$PORT"; }
+
+  cat <<EOF
+  docker run --rm${network} -e IP="${ip}" -e PORT="${port}" -e PIP_ROOT_USER_ACTION=ignore -e DEBIAN_FRONTEND=noninteractive python:3-slim sh -c '
+    apt-get update -qq &&
+    apt-get install -y -qq curl >/dev/null &&
+    pip install --quiet --no-cache-dir aioquic cryptography tqdm &&
+    curl -sL https://raw.githubusercontent.com/bojanisc/quicmap/main/quicmap.py -o /tmp/q.py &&
+    out=\$(python3 /tmp/q.py -p "\$PORT" "\$IP" 2>&1)
+    echo "\$out"
+    if echo "\$out" | grep -q endpoint; then echo; echo "PASS - ${show} responded to QUIC"; else echo; echo "FAIL - ${show} did not respond to QUIC"; fi
+  '
+EOF
+}
+
+
 port-check() {
   local var
   local cl_client
   local p2p_port
   local quic_port
   local ipv6
+  local enr
   local enr_hex
   local ip4 tcp4 udp4 quic4
   local ip6 udp6 quic6
@@ -1545,6 +1591,7 @@ port-check() {
   local inbound outbound inbound_v6
   local cgnat dual_stack
   local peers
+  local probe_ip
   local detail
 
   __cl_rest_port=""
@@ -1589,7 +1636,8 @@ port-check() {
 
   # The ENR is what peers discover. Clients learn their external address from
   # their peers, so it is the address the Internet sees.
-  enr_hex=$(__enr_to_hex "$(sed -n 's/.*"enr":"\([^"]*\)".*/\1/p' <<< "${__cl_api_body}")")
+  enr=$(sed -n 's/.*"enr":"\([^"]*\)".*/\1/p' <<< "${__cl_api_body}")
+  enr_hex=$(__enr_to_hex "${enr}")
   ip4=$(__enr_ip "$(__enr_value "${enr_hex}" 826970)")
   udp4=$(__enr_port "$(__enr_value "${enr_hex}" 83756470)")
   quic4=$(__enr_port "$(__enr_value "${enr_hex}" 8471756963)")
@@ -1720,17 +1768,43 @@ port-check() {
   fi
   echo "  - A node that started in the last few minutes has not had time to be dialed."
   echo
+  probe_ip="<your-public-ip>"
+  [[ -n "${ip4}" ]] && ! __is_private_v4 "${ip4}" && probe_ip="${ip4}"
+
   echo "No web site can test a UDP port for you - the ones that offer to only speak TCP."
-  echo "To probe QUIC from outside, from a VPS, a phone hotspot or a friend's machine:"
+  echo "A green result from one of those proves nothing about UDP ${p2p_port} or ${quic_port}."
   echo
-  echo "  git clone https://github.com/bojanisc/quicmap"
-  echo "  pip3 install -r quicmap/requirements.txt"
-  echo "  python3 quicmap/quicmap.py -p ${quic_port} ${ip4:-<your-public-ip>}"
+  echo "To probe discv5 from outside - a VPS, a phone hotspot or a friend's machine"
+  echo "with Docker - and leave nothing behind there:"
   echo
-  echo "A reply that lists \"server_versions\" means the forward works. An empty ALPN"
-  echo "result is expected: consensus clients use the \"libp2p\" ALPN, which quicmap"
-  echo "does not try."
+  if [[ "${probe_ip}" = "${ip4}" ]]; then
+    echo "${cl_client}'s record advertises ${ip4}, which is the address this pings:"
+  else
+    echo "${cl_client}'s own record has no address to ping yet, so give the one to test"
+    echo "explicitly:"
+  fi
   echo
+  __probe_discv5 "${enr}" "${probe_ip}" "${udp4:-${p2p_port}}"
+  echo
+  echo "To probe QUIC the same way:"
+  echo
+  __probe_quic "${probe_ip}" "${quic4:-${quic_port}}"
+  echo
+  echo "The raw quicmap output prints above; PASS/FAIL summarizes it. An \"ALPN: ?\""
+  echo "line is expected - consensus clients speak the \"libp2p\" ALPN, which quicmap"
+  echo "does not probe for; \"server_versions\" appearing at all is what proves the"
+  echo "forward works."
+  echo
+
+  if [[ -n "${ip6}" ]] && ! __is_private_v6 "${ip6}"; then
+    echo "Your record also advertises IPv6 ${ip6}. From a probing host that has IPv6"
+    echo "itself, and on Linux, where \"--network host\" hands the container that IPv6:"
+    echo
+    __probe_discv5 "${enr}" "[${ip6}]" "${udp6:-${p2p_port}}"
+    echo
+    __probe_quic "${ip6}" "${quic6:-${quic_port}}"
+    echo
+  fi
 }
 
 
