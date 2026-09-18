@@ -1663,7 +1663,7 @@ port-check() {
   local local_v4 gateway_v4
   local peer_entries inbound_entries outbound_entries
   local inbound_addresses outbound_addresses
-  local inbound outbound inbound_v6
+  local inbound outbound inbound_v6 inbound_tcp_v4
   local cgnat dual_stack
   local peers
   local show_inbound=0
@@ -1763,14 +1763,20 @@ port-check() {
     outbound_addresses=$(__peer_addresses "${outbound_entries}")
   fi
   inbound_v6=$(__count_matching "${inbound_addresses}" '/ip6/')
+  inbound_tcp_v4=$(( $(__count_matching "${inbound_addresses}" '/tcp/') \
+    - $(__count_matching "${inbound_addresses}" '/tcp/' '/ip6/') ))
 
-  # Carrier-grade NAT can be proven from this host, but never ruled out from it
+  # Carrier-grade NAT can be proven from this host, but never ruled out from it -
+  # except that an unsolicited inbound TCP connection has no NAT hole-punch that
+  # could fake it, unlike QUIC/UDP, so it is treated as disproof too.
   if [[ -n "${ip4}" ]] && __is_cgnat_v4 "${ip4}"; then
     cgnat="yes - your public address ${ip4} is in the carrier-grade NAT range"
   elif [[ -n "${gateway_v4}" ]] && __is_cgnat_v4 "${gateway_v4}"; then
     cgnat="yes - your gateway ${gateway_v4} is in the carrier-grade NAT range"
   elif [[ -n "${ip4}" ]] && ! __is_private_v4 "${ip4}"; then
     cgnat="no signs of it"
+  elif [[ "${inbound_tcp_v4}" -gt 0 ]]; then
+    cgnat="no signs of it - a peer dialed you over IPv4 TCP, which CGNAT would block"
   else
     cgnat="cannot tell yet"
   fi
