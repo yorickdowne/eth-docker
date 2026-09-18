@@ -122,4 +122,4 @@ Test scenarios
 ## ethd port-check
 
 - `./ethd port-check` on a node with no inbound peers: the discv5 and QUIC probe commands print, and both run clean when pasted on another machine with Docker
-- `./ethd port-check` on a dual-stack node: the IPv6 pair prints as well, with `--network host`
+- `./ethd port-check` on a dual-stack node: the IPv6 pair prints as well, creating an `ethd-v6-probe` docker network instead of using `--network host`

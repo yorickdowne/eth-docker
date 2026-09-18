@@ -1585,13 +1585,14 @@ __probe_discv5() {
   local enr="$1"
   local ip="$2"
   local port="$3"
+  local setup=""
   local network=""
 
-  # Docker's default bridge has no IPv6, so a v6 probe needs the host's own stack
-  [[ "${ip}" = *:* ]] && network=" --network host"
+  # Docker's default bridge has no IPv6 route out, so a v6 probe needs a network that does
+  [[ "${ip}" = *:* ]] && { setup="docker network create --ipv6 ethd-v6-probe >/dev/null 2>&1; "; network=" --network ethd-v6-probe"; }
 
   cat <<EOF
-  docker run --rm${network} -e IP="${ip}" -e PORT="${port}" ethereum/client-go:alltools-latest sh -c '
+  ${setup}docker run --rm${network} -e IP="${ip}" -e PORT="${port}" ethereum/client-go:alltools-latest sh -c '
     pk=\$(devp2p enrdump ${enr} | sed -n "s#^URLv4:.*enode://\\([0-9a-f]*\\).*#\\1#p")
     out=\$(devp2p discv5 ping "enode://\${pk}@\${IP}:\${PORT}" 2>&1 | tail -n1)
     if [ "\$out" = "<nil>" ]; then echo "PASS - \$IP:\$PORT is reachable over discv5"; else echo "FAIL - \$IP:\$PORT - \$out"; fi
@@ -1605,13 +1606,15 @@ __probe_quic() {
 # host - and a UDP port. Echoes a self-contained docker command that probes QUIC there.
   local ip="$1"
   local port="$2"
+  local setup=""
   local network=""
   local show="\$IP:\$PORT"
 
-  [[ "${ip}" = *:* ]] && { network=" --network host"; show="[\$IP]:\$PORT"; }
+  # Docker's default bridge has no IPv6 route out, so a v6 probe needs a network that does
+  [[ "${ip}" = *:* ]] && { setup="docker network create --ipv6 ethd-v6-probe >/dev/null 2>&1; "; network=" --network ethd-v6-probe"; show="[\$IP]:\$PORT"; }
 
   cat <<EOF
-  docker run --rm${network} -e IP="${ip}" -e PORT="${port}" -e PIP_ROOT_USER_ACTION=ignore -e DEBIAN_FRONTEND=noninteractive python:3-slim sh -c '
+  ${setup}docker run --rm${network} -e IP="${ip}" -e PORT="${port}" -e PIP_ROOT_USER_ACTION=ignore -e DEBIAN_FRONTEND=noninteractive python:3-slim sh -c '
     apt-get update -qq &&
     apt-get install -y -qq curl >/dev/null &&
     pip install --quiet --no-cache-dir aioquic cryptography tqdm &&
@@ -1868,7 +1871,8 @@ port-check() {
 
   if [[ -n "${ip6}" ]] && ! __is_private_v6 "${ip6}"; then
     echo "Your record also advertises IPv6 ${ip6}. From a probing host that has IPv6"
-    echo "itself, and on Linux, where \"--network host\" hands the container that IPv6:"
+    echo "itself, these create a small IPv6-enabled docker network for the probe, since"
+    echo "Docker's default bridge has no IPv6 route out:"
     echo
     __probe_discv5 "${enr}" "[${ip6}]" "${udp6:-${p2p_port}}"
     echo
