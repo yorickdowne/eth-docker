@@ -1591,6 +1591,8 @@ port-check() {
   local inbound outbound inbound_v6
   local cgnat dual_stack
   local peers
+  local show_inbound=0
+  local show_outbound=0
   local probe_ip
   local detail
 
@@ -1737,10 +1739,14 @@ port-check() {
   fi
   printf '  %-12s %s\n' "Inbound" "${detail}${peers:+, ${peers}}"
 
-  if [[ -n "${inbound_addresses}" || -n "${outbound_addresses}" ]]; then
+  # Zeros are the truth when there are no peers in that direction. A client that reports
+  # peers but no addresses for them is the one case where a row would lie, so it gets none.
+  [[ -n "${inbound_addresses}" || "${inbound}" -eq 0 ]] && show_inbound=1
+  [[ -n "${outbound_addresses}" || "${outbound}" = "0" ]] && show_outbound=1
+  if [[ "${show_inbound}" -eq 1 || "${show_outbound}" -eq 1 ]]; then
     printf '  %-12s %-10s %8s %8s %8s %8s\n' "Peers" "direction" "QUIC v4" "QUIC v6" "TCP v4" "TCP v6"
-    [[ -n "${inbound_addresses}" ]] && __peer_row "inbound" "${inbound_addresses}"
-    [[ -n "${outbound_addresses}" ]] && __peer_row "outbound" "${outbound_addresses}"
+    [[ "${show_inbound}" -eq 1 ]] && __peer_row "inbound" "${inbound_addresses}"
+    [[ "${show_outbound}" -eq 1 ]] && __peer_row "outbound" "${outbound_addresses}"
     printf '  %-12s %s\n' "" "counts as your client reports them"
   fi
   echo

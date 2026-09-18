@@ -118,3 +118,8 @@ Test scenarios
 - Likewise config files, same ownership expectations, and o+r permissions
 - `./ethd space` a second time, no message that `.env` permissions are being fixed should be seen
 - Ditto check ownership and permissions of bind-mounted files in alloy, alloy-obol, prometheus, loki, tempo, ssv-config. They need to be `other` readable.
+
+## ethd port-check
+
+- `./ethd port-check` on a node with no inbound peers: the discv5 and QUIC probe commands print, and both run clean when pasted on another machine with Docker
+- `./ethd port-check` on a dual-stack node: the IPv6 pair prints as well, with `--network host`
