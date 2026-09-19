@@ -121,6 +121,14 @@ Test scenarios
 
 ## ethd port-check
 
+The `Test ethd port-check` workflow, label `check-ethd-port-check`, already covers part of this
+list on Ubuntu and macOS: option parsing, the unreachable-client path, `--troubleshoot` and
+`--debug` being one flag, the `Peer ID` and `Public key` rows, the openssl and python3 key paths
+agreeing, and no `enr:` appearing in the printed probe commands. It runs Nimbus against hoodi with
+no inbound, so everything below that needs real peers, a NAT, IPv6, or a specific client is still
+manual. The Teku and Grandine direction-split check in particular cannot be automated: a freshly
+started node has no peers, and a table of all zeroes is mirrored whether or not the split works.
+
 - `./ethd port-check` on a node with no inbound peers: the discv5 and QUIC probe commands print, and both run clean when pasted on another machine with Docker
 - `./ethd port-check` on a node behind port-translating NAT: the discv5 probe command must carry `CL_P2P_PORT`, not the port the ENR advertises, and the report must say why the two differ
 - `./ethd port-check` on a dual-stack node: the IPv6 pair prints as well, creating an `ethd-v6-probe` docker network instead of using `--network host`

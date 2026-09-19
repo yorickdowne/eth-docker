@@ -1442,7 +1442,9 @@ __hex_to_binary() {
 
 
 __enr_to_hex() {
-# Call with an ENR. Echoes its RLP as hex with the signature stripped, or nothing on failure.
+# Call with an ENR. Echoes its RLP as hex with the signature stripped. When that cannot be
+# done it echoes nothing and says why on stderr - never on stdout, which is the result - so
+# that a report missing every ENR-derived row explains itself instead of looking empty.
   local enr="${1#enr:}"
   local padding
   local hex
@@ -1453,10 +1455,19 @@ __enr_to_hex() {
     enr="${enr}="
     padding=$(( padding - 1 ))
   done
-  hex=$(base64 -d <<< "${enr}" 2>/dev/null | od -An -tx1 -v | tr -d ' \n') || return 0
+  # "if !" is what keeps a decode failure from tripping "set -e", and it leaves base64 free
+  # to report the fault itself - on a host whose base64 spells decode "-D", that message is
+  # the whole diagnosis
+  if ! hex=$(base64 -d <<< "${enr}" | od -An -tx1 -v | tr -d ' \n'); then
+    echo "Warning: could not decode this node's ENR, so nothing it carries can be shown." >&2
+    return 0
+  fi
   # The record is [signature, seq, k, v, ...]. Drop the 64-byte signature, so that its
   # random bytes cannot be mistaken for a key, and search the key/value pairs only.
-  [[ "${hex}" = *b840* ]] || return 0
+  if [[ "${hex}" != *b840* ]]; then
+    echo "Warning: this node's ENR does not start with a 64-byte signature, so it cannot be read." >&2
+    return 0
+  fi
   hex="${hex#*b840}"
   echo "${hex:128}"
 }
