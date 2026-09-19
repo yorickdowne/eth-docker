@@ -2046,6 +2046,13 @@ port-check() {
   echo "To probe discv5 from outside - a VPS, a phone hotspot or a friend's machine"
   echo "with Docker - and leave nothing behind there:"
   echo
+  # A packet from a LAN address is not the packet a peer sends, and some clients drop it
+  echo "Run these from a machine with a public IP address, not from this one and not"
+  echo "from anything else on your LAN. A probe sourced from a private address -"
+  echo "10.x, 172.16-31.x, 192.168.x, or a Docker bridge - reaches your node with a"
+  echo "source the Internet could never route a reply to, and some consensus clients"
+  echo "drop it without a word. It will read as a closed port when the port is fine."
+  echo
   # Under IPv4 NAT the ENR carries the translated port, learned from peers. That is a
   # mapping, not a forward, so the port worth probing is the configured one.
   if [[ -n "${udp4}" && "${udp4}" != "${p2p_port}" ]]; then
@@ -2073,9 +2080,10 @@ port-check() {
   echo "forward works."
   echo
   if [[ -n "${ip6}" ]] && ! __is_private_v6 "${ip6}"; then
-    echo "Your record also advertises IPv6 ${ip6}. From a probing host that has IPv6"
-    echo "itself, these create a small IPv6-enabled docker network for the probe, since"
-    echo "Docker's default bridge has no IPv6 route out:"
+    echo "Your record also advertises IPv6 ${ip6}. Run these from a probing host with a"
+    echo "global IPv6 address of its own - the same rule as above, a ULA or link-local"
+    echo "source will not do. They create a small IPv6-enabled docker network for the"
+    echo "probe, since Docker's default bridge has no IPv6 route out:"
     echo
     __probe_discv5 "${pubkey}" "${enr}" "[${ip6}]" "${udp6:-${p2p_port}}"
     echo

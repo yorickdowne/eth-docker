@@ -133,4 +133,5 @@ Test scenarios
 - On a client that does not report peer direction, the preamble names that rather than claiming inbound works, and the `Peers` diagnostics row says `direction not reported`
 - The diagnostics `Beacon API` row says `throwaway container` on Lodestar, whose image ships neither wget nor curl, and `docker compose exec` elsewhere. `Public key` names openssl or python3, whichever read it
 - With the consensus client unreachable, `--troubleshoot` prints both routes it tried before exiting 1
+- The guidance must tell the reader to probe from a public IP address and warn that a probe sourced from an RFC1918 or Docker-bridge address can be dropped silently by the consensus client. Verified against Teku 26.8.0: it answers public peers but never replies to a discv5 PING sourced from 172.18.0.0/16, with no ICMP and nothing in its debug log, so the probe reads as a closed port on a port that is open
 - Cross-check the counts against the client's own gauge, which is the independent source of truth: `./ethd cmd exec consensus sh -c 'wget -qO- http://localhost:8008/metrics' | grep beacon_peer_count` for Teku, the equivalent gauge for other clients
