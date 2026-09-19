@@ -1350,9 +1350,9 @@ space() {
 }
 
 
-__cl_api_query() {
 # Call with a Beacon API path and the names of two variables to receive the response body and
 # the route that worked, the latter empty on failure. Returns non-zero when the call failed.
+__cl_api_query() {
   local path="$1"
   local out_body="$2"
   local out_via="$3"
@@ -1392,11 +1392,11 @@ __cl_api_query() {
 }
 
 
-__peers_in_direction() {
 # Call with peer entries and "inbound" or "outbound". Echoes the connected ones.
 # Teku and Grandine ignore the state and direction query parameters the Beacon API
 # spec defines, so the filtering happens here rather than in the request. A peer is
 # dropped only when it says it is not connected, so a client that omits "state" counts.
+__peers_in_direction() {
   local entries="$1"
   local want="$2"
 
@@ -1405,17 +1405,17 @@ __peers_in_direction() {
 }
 
 
-__count_lines() {
 # Call with newline-separated text. Echoes the number of non-empty lines.
+__count_lines() {
   local text="$1"
 
   grep -c . <<< "${text}" || true
 }
 
 
-__peer_addresses() {
 # Call with peer entries. Echoes one peer multiaddr per line. A client may leave the
 # address off a peer, so there can be fewer addresses than entries.
+__peer_addresses() {
   local entries="$1"
 
   grep -oE '"last_seen_p2p_address"[[:space:]]*:[[:space:]]*"[^"]*"' <<< "${entries}" \
@@ -1423,8 +1423,8 @@ __peer_addresses() {
 }
 
 
-__count_matching() {
 # Call with newline-separated multiaddrs and one or two extended regexes to match on
+__count_matching() {
   local addresses="$1"
   local first="$2"
   local second="${3:-.}"
@@ -1433,8 +1433,8 @@ __count_matching() {
 }
 
 
-__hex_to_binary() {
 # Call with an even number of hex characters. Writes them to stdout as the bytes they spell.
+__hex_to_binary() {
   local hex="$1"
   local index
 
@@ -1444,10 +1444,10 @@ __hex_to_binary() {
 }
 
 
-__enr_to_hex() {
 # Call with an ENR. Echoes its RLP as hex with the signature stripped. When that cannot be
 # done it echoes nothing and says why on stderr - never on stdout, which is the result - so
 # that a report missing every ENR-derived row explains itself instead of looking empty.
+__enr_to_hex() {
   local enr="${1#enr:}"
   local padding
   local hex
@@ -1458,9 +1458,6 @@ __enr_to_hex() {
     enr="${enr}="
     padding=$(( padding - 1 ))
   done
-  # "if !" is what keeps a decode failure from tripping "set -e", and it leaves base64 free
-  # to report the fault itself - on a host whose base64 spells decode "-D", that message is
-  # the whole diagnosis
   if ! hex=$(base64 -d <<< "${enr}" | od -An -tx1 -v | tr -d ' \n'); then
     echo "Warning: could not decode this node's ENR, so nothing it carries can be shown." >&2
     return 0
@@ -1476,9 +1473,9 @@ __enr_to_hex() {
 }
 
 
-__enr_value() {
 # Call with the hex from __enr_to_hex and the hex of an RLP-encoded ENR key, such as
 # 826970 for "ip". Echoes the hex of that key's value, or nothing when the key is absent.
+__enr_value() {
   local hex="$1"
   local key="$2"
   local rest
@@ -1494,8 +1491,8 @@ __enr_value() {
 }
 
 
-__enr_ip() {
 # Call with the hex of an ENR "ip" or "ip6" value. Echoes it as an IP address.
+__enr_ip() {
   local hex="$1"
   local group
   local address
@@ -1517,8 +1514,8 @@ __enr_ip() {
 }
 
 
-__enr_port() {
 # Call with the hex of an ENR port value. Echoes it as a decimal port number.
+__enr_port() {
   local hex="$1"
 
   [[ -n "${hex}" ]] || return 0
@@ -1526,12 +1523,12 @@ __enr_port() {
 }
 
 
-__enr_pubkey() {
 # Call with the hex from __enr_to_hex. Echoes the node's public key, as the 128 hex characters
 # an "enode://" URL wants, and the tool that read it, separated by a space - and nothing at all
 # when the key cannot be had. The ENR stores the key compressed, as one coordinate and a sign;
 # recovering the other coordinate is curve math that bash cannot do, so this borrows a tool that
 # can. Both paths agree with "devp2p enrdump".
+__enr_pubkey() {
   local compressed
   local key=""
 
@@ -1571,8 +1568,8 @@ print("%064x%064x" % (x, y))
 }
 
 
-__is_private_v4() {
 # Call with an IPv4 address. Returns 0 when it is not usable on the Internet.
+__is_private_v4() {
   case "$1" in
     10.*|127.*|0.*|169.254.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*) return 0;;
     *) return 1;;
@@ -1580,9 +1577,9 @@ __is_private_v4() {
 }
 
 
-__is_private_v6() {
 # Call with an IPv6 address. Returns 0 when it is not usable on the Internet:
 # the loopback and unspecified addresses, link-local fe80::/10, unique local fc00::/7.
+__is_private_v6() {
   local address
 
   address=$(tr '[:upper:]' '[:lower:]' <<< "$1")
@@ -1593,8 +1590,8 @@ __is_private_v6() {
 }
 
 
-__is_cgnat_v4() {
 # Call with an IPv4 address. Returns 0 when it is in the carrier-grade NAT range 100.64.0.0/10.
+__is_cgnat_v4() {
   case "$1" in
     100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) return 0;;
     *) return 1;;
@@ -1602,9 +1599,9 @@ __is_cgnat_v4() {
 }
 
 
-__listens_globally() {
 # Call with newline-separated listen multiaddrs and an address family, ip4 or ip6.
 # Returns 0 when the client listens on an address of that family that the Internet can reach.
+__listens_globally() {
   local addresses="$1"
   local family="$2"
   local address
@@ -1624,8 +1621,8 @@ __listens_globally() {
 }
 
 
-__peer_row() {
 # Call with a row label and the newline-separated multiaddrs of peers in that direction
+__peer_row() {
   local label="$1"
   local addresses="$2"
   local quic_total
@@ -1642,9 +1639,9 @@ __peer_row() {
 }
 
 
-__wrapped_row() {
 # Call with a row label and a value too long for one line. Prints it in 64-character pieces, so
 # that a public key breaks between its two coordinates instead of wherever the terminal folds it.
+__wrapped_row() {
   local label="$1"
   local value="$2"
 
@@ -1656,9 +1653,9 @@ __wrapped_row() {
 }
 
 
-__diag_lines() {
 # Call with a row label and newline-separated values. Prints one per line, label on the first,
 # and the word "none" when there is nothing to print - an empty row would read as a bug.
+__diag_lines() {
   local label="$1"
   local values="$2"
   local line
@@ -1674,20 +1671,20 @@ __diag_lines() {
 }
 
 
-__host_has_v6() {
 # Returns 0 when this host can reach the IPv6 Internet, 1 when it cannot, 2 when untested
+__host_has_v6() {
   type -P ping >/dev/null 2>&1 || return 2
   ping -c1 -W2 2001:4860:4860::8888 >/dev/null 2>&1 || return 1
   return 0
 }
 
 
-__probe_discv5() {
 # Call with the node's public key, its ENR, the address to test - an IPv6 address in brackets -
 # and a UDP port. Echoes a self-contained docker command that pings discv5 at that address.
 # The key travels as a variable, the way the address and port do, so that the command can be
 # shared with the address blanked out. Only a node whose key could not be read falls back to
 # handing the container the ENR, which has the address inside it.
+__probe_discv5() {
   local key="$1"
   local enr="$2"
   local ip="$3"
@@ -1717,9 +1714,9 @@ EOF
 }
 
 
-__probe_quic() {
 # Call with the address to test - an IPv6 address without brackets, as quicmap wants a bare
 # host - and a UDP port. Echoes a self-contained docker command that probes QUIC there.
+__probe_quic() {
   local ip="$1"
   local port="$2"
   local setup=""
@@ -1763,8 +1760,6 @@ port-check() {
   local route=""
   local local_v4 gateway_v4
   local peer_entries inbound_entries outbound_entries
-  # Empty, not merely declared: a client that does not report peer direction never assigns
-  # these, and "set -u" would kill the command on the first read
   local inbound_addresses="" outbound_addresses=""
   local inbound outbound inbound_v6 inbound_tcp_v4
   local cgnat dual_stack
