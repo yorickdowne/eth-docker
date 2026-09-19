@@ -1887,6 +1887,14 @@ port-check() {
   echo "To probe discv5 from outside - a VPS, a phone hotspot or a friend's machine"
   echo "with Docker - and leave nothing behind there:"
   echo
+  # Under IPv4 NAT the ENR carries the translated port, learned from peers. That is a
+  # mapping, not a forward, so the port worth probing is the configured one.
+  if [[ -n "${udp4}" && "${udp4}" != "${p2p_port}" ]]; then
+    echo "${cl_client} advertises discv5 UDP ${udp4}, the port its NAT mapping happens"
+    echo "to use. That is not the port you forward, and it can change. The port to"
+    echo "forward - and the one this pings - is ${p2p_port}, CL_P2P_PORT in \".env\"."
+    echo
+  fi
   if [[ "${probe_ip}" = "${ip4}" ]]; then
     echo "${cl_client}'s record advertises ${ip4}, which is the address this pings:"
   else
@@ -1894,7 +1902,7 @@ port-check() {
     echo "explicitly:"
   fi
   echo
-  __probe_discv5 "${enr}" "${probe_ip}" "${udp4:-${p2p_port}}"
+  __probe_discv5 "${enr}" "${probe_ip}" "${p2p_port}"
   echo
   echo "To probe QUIC the same way:"
   echo
