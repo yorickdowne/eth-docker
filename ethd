@@ -71,14 +71,10 @@ __free_space=0
 __docker_dir="/var/lib/docker"
 __keys_args=""
 __final_msg=""
-__cl_rest_port=""
+__cl_rest_port=""  # These four are port-check's configuration, also read by __cl_api_query
 __cl_service=""
 __cl_alias=""
 __el_alias=""
-__cl_api_body=""  # These four hand results back from __cl_api_query and __enr_pubkey
-__cl_api_via=""
-__pubkey=""
-__pubkey_via=""
 
 
 __dodocker() {
@@ -1352,10 +1348,14 @@ space() {
 
 
 __cl_api_query() {
-# Call with a Beacon API path. Sets the globals __cl_api_body and __cl_api_via, the latter naming
-# the route that worked. Returns non-zero when the call failed.
+# Call with a Beacon API path and the names of two variables to receive the response body and
+# the route that worked, the latter empty on failure. Returns non-zero when the call failed.
   local path="$1"
+  local out_body="$2"
+  local out_via="$3"
   local url="http://localhost:${__cl_rest_port}${path}"
+  local body=""
+  local via=""
   local errexit=0
   local exitstatus
   local network_name
@@ -1364,8 +1364,8 @@ __cl_api_query() {
   # Not every client image ships both wget and curl, so try either one
   [[ "$-" =~ e ]] && errexit=1
   set +e
-  __cl_api_via="docker compose exec ${__cl_service}"
-  __cl_api_body=$(__docompose exec -T "${__cl_service}" sh -c \
+  via="docker compose exec ${__cl_service}"
+  body=$(__docompose exec -T "${__cl_service}" sh -c \
     "wget -qO- '${url}' 2>/dev/null || curl -sf '${url}'" 2>/dev/null)
   exitstatus=$?
   if [[ "${exitstatus}" -ne 0 ]]; then
@@ -1376,23 +1376,16 @@ __cl_api_query() {
     network_name=$(__compose_network_name)
     cl_host="${__cl_alias}"
     [[ "${__cl_service}" = "execution" ]] && cl_host="${__el_alias}"
-    __cl_api_via="throwaway container on ${network_name}, reaching ${cl_host}"
-    __cl_api_body=$(__dodocker run --rm --network "${network_name}" \
+    via="throwaway container on ${network_name}, reaching ${cl_host}"
+    body=$(__dodocker run --rm --network "${network_name}" \
       vc-utils:local curl -sf -m 10 "http://${cl_host}:${__cl_rest_port}${path}" 2>/dev/null)
     exitstatus=$?
   fi
-  [[ "${exitstatus}" -ne 0 ]] && __cl_api_via=""
+  [[ "${exitstatus}" -ne 0 ]] && via=""
+  printf -v "${out_body}" '%s' "${body}"
+  printf -v "${out_via}" '%s' "${via}"
   [[ "${errexit}" -eq 1 ]] && set -e
   return "${exitstatus}"
-}
-
-
-__peer_entries() {
-# Call with the body of a node/peers response. Echoes one peer object per line.
-# A peer object has no nested objects, so splitting on "{" cannot split one in two.
-  local body="$1"
-
-  tr '\n' ' ' <<< "${body}" | tr '{' '\n' | grep '"peer_id"' || true
 }
 
 
@@ -1424,18 +1417,6 @@ __peer_addresses() {
 
   grep -oE '"last_seen_p2p_address"[[:space:]]*:[[:space:]]*"[^"]*"' <<< "${entries}" \
     | sed 's/.*"\([^"]*\)"$/\1/' || true
-}
-
-
-__listen_addresses() {
-# Call with the body of a node/identity response. Echoes one listen multiaddr per line.
-# Some clients leave "p2p_addresses" empty, in which case this echoes nothing.
-  local body="$1"
-  local addresses
-
-  addresses=$(tr -d ' \n' <<< "${body}" | sed -n 's/.*"p2p_addresses":\[\([^]]*\)\].*/\1/p')
-  [[ -n "${addresses}" ]] || return 0
-  tr ',' '\n' <<< "${addresses}" | tr -d '"'
 }
 
 
@@ -1532,17 +1513,14 @@ __enr_port() {
 
 
 __enr_pubkey() {
-# Call with the hex from __enr_to_hex. Sets the global __pubkey to the node's public key, as the
-# 128 hex characters an "enode://" URL wants, and __pubkey_via to the tool that read it - both
-# empty when it cannot be had. Globals rather than an echo, because a command substitution would
-# run this in a subshell and lose __pubkey_via with it. The ENR stores the key compressed, as one
-# coordinate and a sign; recovering the other coordinate is curve math that bash cannot do, so
-# this borrows a tool that can. Both paths agree with "devp2p enrdump".
+# Call with the hex from __enr_to_hex. Echoes the node's public key, as the 128 hex characters
+# an "enode://" URL wants, and the tool that read it, separated by a space - and nothing at all
+# when the key cannot be had. The ENR stores the key compressed, as one coordinate and a sign;
+# recovering the other coordinate is curve math that bash cannot do, so this borrows a tool that
+# can. Both paths agree with "devp2p enrdump".
   local compressed
   local key=""
 
-  __pubkey=""
-  __pubkey_via=""
   compressed=$(__enr_value "$1" 89736563703235366b31)  # RLP of the ENR key "secp256k1"
   [[ "${#compressed}" -eq 66 ]] || return 0
 
@@ -1552,8 +1530,7 @@ __enr_pubkey() {
       | openssl ec -pubin -inform DER -outform DER -conv_form uncompressed 2>/dev/null \
       | od -An -tx1 -v | tr -d ' \n') || key=""
     if [[ "${#key}" -ge 128 ]]; then
-      __pubkey="${key: -128}"
-      __pubkey_via="openssl"
+      echo "${key: -128} openssl"
       return 0
     fi
   fi
@@ -1571,8 +1548,7 @@ if y % 2 != point[0] % 2:
 print("%064x%064x" % (x, y))
 ' "${compressed}" 2>/dev/null) || key=""
     if [[ "${#key}" -eq 128 ]]; then
-      __pubkey="${key}"
-      __pubkey_via="python3"
+      echo "${key} python3"
       return 0
     fi
   fi
@@ -1684,17 +1660,6 @@ __diag_lines() {
 }
 
 
-__local_v4_route() {
-# Echoes "source-address gateway-address" for the default IPv4 route, empty when unknown
-  local route
-
-  type -P ip >/dev/null 2>&1 || return 0  # Not available on macOS
-  route=$(ip -4 route get 1.1.1.1 2>/dev/null) || return 0
-  echo "$(sed -n 's/.*src \([^ ]*\).*/\1/p' <<< "${route}")" \
-    "$(sed -n 's/.*via \([^ ]*\).*/\1/p' <<< "${route}")"
-}
-
-
 __host_has_v6() {
 # Returns 0 when this host can reach the IPv6 Internet, 1 when it cannot, 2 when untested
   type -P ping >/dev/null 2>&1 || return 2
@@ -1771,15 +1736,17 @@ port-check() {
   local p2p_port
   local quic_port
   local ipv6
+  local cl_api_body cl_api_via
   local enr
   local enr_hex
-  local pubkey
+  local pubkey pubkey_via
   local peer_id
   local ip4 tcp4 udp4 quic4
   local ip6 udp6 quic6
   local listen_addresses
   local listens_v4=0
   local listens_v6=0
+  local route=""
   local local_v4 gateway_v4
   local peer_entries inbound_entries outbound_entries
   # Empty, not merely declared: a client that does not report peer direction never assigns
@@ -1851,7 +1818,7 @@ port-check() {
   __el_alias="${__el_alias:-default-execution}"
   __el_alias="${__el_alias//\$\{NETWORK\}/${network}}"
 
-  if ! __cl_api_query "/eth/v1/node/identity"; then
+  if ! __cl_api_query "/eth/v1/node/identity" "cl_api_body" "cl_api_via"; then
     echo "Unable to reach ${cl_client}'s Beacon API on port ${__cl_rest_port}. Is it running?"
     echo "Check with \"${__me} logs ${__cl_service}\"."
     if [[ "${troubleshoot}" -eq 1 ]]; then
@@ -1864,12 +1831,12 @@ port-check() {
 
   # The ENR is what peers discover. Clients learn their external address from
   # their peers, so it is the address the Internet sees.
-  enr=$(sed -n 's/.*"enr":"\([^"]*\)".*/\1/p' <<< "${__cl_api_body}")
+  enr=$(sed -n 's/.*"enr":"\([^"]*\)".*/\1/p' <<< "${cl_api_body}")
   enr_hex=$(__enr_to_hex "${enr}")
   # The peer ID and the public key name the node without naming where it lives, unlike the ENR
-  peer_id=$(sed -n 's/.*"peer_id":"\([^"]*\)".*/\1/p' <<< "${__cl_api_body}")
-  __enr_pubkey "${enr_hex}"
-  pubkey="${__pubkey}"
+  peer_id=$(sed -n 's/.*"peer_id":"\([^"]*\)".*/\1/p' <<< "${cl_api_body}")
+  # Two values from one helper, so it echoes both rather than reaching for a global
+  read -r pubkey pubkey_via <<< "$(__enr_pubkey "${enr_hex}")"
   ip4=$(__enr_ip "$(__enr_value "${enr_hex}" 826970)")
   udp4=$(__enr_port "$(__enr_value "${enr_hex}" 83756470)")
   quic4=$(__enr_port "$(__enr_value "${enr_hex}" 8471756963)")
@@ -1880,20 +1847,27 @@ port-check() {
 
   # What the libp2p host listens on, which is a different question from what the
   # ENR advertises. Not every client reports it, so an empty list means "unknown".
-  listen_addresses=$(__listen_addresses "${__cl_api_body}")
+  listen_addresses=$(tr -d ' \n' <<< "${cl_api_body}" \
+    | sed -n 's/.*"p2p_addresses":\[\([^]]*\)\].*/\1/p' | tr ',' '\n' | tr -d '"')
   __listens_globally "${listen_addresses}" ip4 && listens_v4=1
   __listens_globally "${listen_addresses}" ip6 && listens_v6=1
 
-  read -r local_v4 gateway_v4 <<< "$(__local_v4_route)"
+  # The host's default IPv4 route, to tell a NAT apart from a direct address. No "ip" on macOS.
+  if type -P ip >/dev/null 2>&1; then
+    route=$(ip -4 route get 1.1.1.1 2>/dev/null) || route=""
+  fi
+  local_v4=$(sed -n 's/.*src \([^ ]*\).*/\1/p' <<< "${route}")
+  gateway_v4=$(sed -n 's/.*via \([^ ]*\).*/\1/p' <<< "${route}")
 
   # Ask for every peer and sort them out here. Not every client honours the state and
   # direction query parameters, and one that ignores them answers both directions with
   # the same full list, which reads as a perfectly symmetrical - and wrong - table.
-  if ! __cl_api_query "/eth/v1/node/peers"; then
+  if ! __cl_api_query "/eth/v1/node/peers" "cl_api_body" "cl_api_via"; then
     echo "Unable to list peers. Is ${cl_client} still starting up?"
     return 1
   fi
-  peer_entries=$(__peer_entries "${__cl_api_body}")
+  # A peer object has no nested objects, so splitting on "{" cannot split one in two
+  peer_entries=$(tr '\n' ' ' <<< "${cl_api_body}" | tr '{' '\n' | grep '"peer_id"' || true)
   if [[ -n "${peer_entries}" ]] && ! grep -q '"direction"' <<< "${peer_entries}"; then
     inbound="?"  # A client that does not tell us which way a peer was dialed
     outbound="?"
@@ -2110,11 +2084,11 @@ port-check() {
   printf '  %-12s %s\n' "Env" \
     "CL_P2P_PORT ${p2p_port}, CL_QUIC_PORT ${quic_port}, CL_REST_PORT ${__cl_rest_port}, IPV6 ${ipv6:-unset}"
   printf '  %-12s %s\n' "Aliases" "${__cl_alias} / ${__el_alias}"
-  printf '  %-12s %s\n' "Beacon API" "${__cl_api_via:-unknown}"
+  printf '  %-12s %s\n' "Beacon API" "${cl_api_via:-unknown}"
   printf '  %-12s %s\n' "Peer ID" "${peer_id:-none}"
   if [[ -n "${pubkey}" ]]; then
     __wrapped_row "Public key" "${pubkey}"
-    printf '  %-12s %s\n' "" "decompressed with ${__pubkey_via}"
+    printf '  %-12s %s\n' "" "decompressed with ${pubkey_via}"
   else
     printf '  %-12s %s\n' "Public key" "not readable - no openssl and no python3 on this host"
   fi
