@@ -72,6 +72,3 @@ jobs:
       - name: Dump client logs on failure
         if: ${{ failure() }}
         run: docker compose logs consensus execution
-      - name: Tear down the client pair
-        if: ${{ always() }}
-        run: ./ethd down
