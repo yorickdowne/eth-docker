@@ -121,7 +121,10 @@ __ensure_vc_utils_image() {
     if ! dpkg-query -W -f='${Status}' docker-buildx-plugin 2>/dev/null | grep -q "ok installed"; then
       ${__auto_sudo} apt-get update && ${__auto_sudo} apt-get install -y docker-buildx-plugin
     fi
-    __dodocker buildx build -t vc-utils:local ./vc-utils
+    # "--load" so the image lands in the image store and not only in the build cache. A
+    # buildx builder on the docker-container driver, which is what CI installs, writes
+    # nowhere the presence check above or a later "docker run" can see it otherwise
+    __dodocker buildx build --load -t vc-utils:local ./vc-utils
   fi
 }
 
