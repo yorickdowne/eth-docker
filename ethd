@@ -2019,11 +2019,13 @@ port-check() {
     echo "    it with \"${__me} config\", or ask your ISP for a public IPv4 address."
   else
     echo "  - Forward UDP ${p2p_port} (discv5) and UDP ${quic_port} (QUIC) to this host."
-    echo "    The consensus layer needs UDP. A TCP-only forward will not do."
+    echo "    The consensus layer needs UDP for transport. A TCP-only forward will not do."
     echo "  - If your ISP has you behind carrier-grade NAT, no forward can work. Enabling"
     echo "    IPv6 with \"${__me} config\" is then the way to accept inbound connections."
   fi
-  echo "  - A node that started in the last few minutes has not had time to be dialed."
+  echo
+  echo "NOTE: A node that started in the last few minutes has not had time to be dialed."
+  echo "If this is a recently started node, wait, then run the test again."
   echo
   probe_ip="<your-public-ip>"
   [[ -n "${ip4}" ]] && ! __is_private_v4 "${ip4}" && probe_ip="${ip4}"
@@ -2031,8 +2033,8 @@ port-check() {
   echo "No web site can test a UDP port for you - the ones that offer to only speak TCP."
   echo "A green result from one of those proves nothing about UDP ${p2p_port} or ${quic_port}."
   echo
-  echo "To probe discv5 from outside - a VPS, a phone hotspot or a friend's machine"
-  echo "with Docker - and leave nothing behind there:"
+  echo "You can probe discv5 from outside - a VPS, a phone hotspot or a friend's machine"
+  echo "with Docker - and leave nothing behind there."
   echo
   # A packet from a LAN address is not the packet a peer sends, and some clients drop it
   echo "Run these from a machine with a public IP address, not from this one and not"
