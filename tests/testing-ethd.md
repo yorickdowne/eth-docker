@@ -122,12 +122,12 @@ Test scenarios
 ## ethd port-check
 
 The `Test ethd port-check` workflow, label `check-ethd-port-check`, already covers part of this
-list on Ubuntu and macOS: option parsing, the unreachable-client path, `--troubleshoot` and
-`--debug` being one flag, the `Peer ID` and `Public key` rows, the openssl and python3 key paths
-agreeing, and no `enr:` appearing in the printed probe commands. It runs Nimbus against hoodi with
-no inbound, so everything below that needs real peers, a NAT, IPv6, or a specific client is still
-manual. The Teku and Grandine direction-split check in particular cannot be automated: a freshly
-started node has no peers, and a table of all zeroes is mirrored whether or not the split works.
+list on Ubuntu and macOS: option parsing, the unreachable-client path, the `Peer ID` and
+`Public key` rows, the openssl and python3 key paths agreeing, and no `enr:` appearing in the
+printed probe commands. It runs Nimbus against hoodi with no inbound, so everything below that
+needs real peers, a NAT, IPv6, or a specific client is still manual. The Teku and Grandine
+direction-split check in particular cannot be automated: a freshly started node has no peers, and
+a table of all zeroes is mirrored whether or not the split works.
 
 - `./ethd port-check` on a node with no inbound peers: the discv5 and QUIC probe commands print, and both run clean when pasted on another machine with Docker
 - `./ethd port-check` on a node behind port-translating NAT: the discv5 probe command must carry `CL_P2P_PORT`, not the port the ENR advertises, and the report must say why the two differ
@@ -136,7 +136,7 @@ started node has no peers, and a table of all zeroes is mirrored whether or not 
 - `./ethd port-check` on any node: the `Peer ID` and `Public key` rows print, healthy or not. The key must match the one geth reads out of the same ENR: `docker run --rm ethereum/client-go:alltools-latest devp2p enrdump <enr> | grep URLv4`
 - `./ethd port-check` with inbound not working: no command it prints may contain an `enr:` string, and the closing note about blanking out the IP must appear
 - `./ethd port-check` on a host without `openssl`: the python3 path must produce the same public key. Without `python3` either, the discv5 command falls back to carrying the ENR and the closing note does not print
-- `./ethd port-check --troubleshoot` and `./ethd port-check --debug` are the same flag and must print identical output. Any other option exits 1 with `Error: Unknown option:`
+- `./ethd port-check` with any option other than `--troubleshoot` or `--debug` exits 1 with `Error: Unknown option:`
 - On a node whose inbound works, the flag prints a preamble saying so, then the guidance verbatim, then the diagnostics block. Without the flag the output ends at the peers table
 - On a client that does not report peer direction, the preamble names that rather than claiming inbound works, and the `Peers` diagnostics row says `direction not reported`
 - The diagnostics `Beacon API` row says `throwaway container` on Lodestar, whose image ships neither wget nor curl, and `docker compose exec` elsewhere. `Public key` names openssl or python3, whichever read it

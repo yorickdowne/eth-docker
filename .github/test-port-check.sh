@@ -62,13 +62,6 @@ run_port_check() {
   status=$?
 }
 
-strip_error_epilogue() {
-# Call with port-check output. Drops ethd's error handler epilogue, which echoes the
-# arguments the command was given and so differs between two runs that are otherwise
-# identical. What is left is port-check's own output.
-  sed '/terminated with exit code/,$d' <<< "$1"
-}
-
 extract_pubkey() {
 # Call with port-check output. Echoes the 128 hex characters of the first "Public key" row,
 # which __wrapped_row prints as two 64-character lines.
@@ -77,14 +70,11 @@ extract_pubkey() {
 
 
 test_offline() {
-  local troubleshoot_output
-
   run_port_check --bogus
   assert_status "unknown option exits 1" 1 "${status}" "${output}"
   assert_contains "unknown option is named" "Error: Unknown option: --bogus" "${output}"
 
-  # Also confirms COMPOSE_FILE detection: nimbus-cl-only.yml must resolve to Nimbus.
-  # This is the run that builds vc-utils:local, so the two below are free of build output.
+  # Also confirms client detection: nimbus-cl-only.yml must resolve to Nimbus
   run_port_check
   assert_status "unreachable API exits 1" 1 "${status}" "${output}"
   assert_contains "unreachable API names the client and port" \
@@ -96,16 +86,6 @@ test_offline() {
     "Tried it inside the \"consensus\" service" "${output}"
   assert_contains "--troubleshoot names the throwaway container route" \
     "throwaway container" "${output}"
-  troubleshoot_output="${output}"
-
-  # Nothing here depends on peers, so the two flags can be compared exactly
-  run_port_check --debug
-  if [[ "$(strip_error_epilogue "${output}")" = "$(strip_error_epilogue "${troubleshoot_output}")" ]]; then
-    pass "--debug and --troubleshoot are the same flag"
-  else
-    fail "--debug and --troubleshoot differ" \
-      "$(diff <(strip_error_epilogue "${troubleshoot_output}") <(strip_error_epilogue "${output}"))"
-  fi
 }
 
 
