@@ -1788,7 +1788,7 @@ port-check() {
   elif [[ "${listens_v6}" -eq 1 || "${inbound_v6}" -gt 0 ]]; then
     dual_stack="up, but not advertised in discv5"
   elif [[ "${ipv6}" = "true" ]]; then
-    dual_stack="enabled, but ${cl_client} has no IPv6 address yet"
+    dual_stack="enabled"
   else
     detail=0
     __host_has_v6 || detail=$?
@@ -1824,6 +1824,8 @@ port-check() {
     printf '  %-12s %s\n' "IPv6" "listening, but not advertised in discv5 - no peer can"
     printf '  %-12s %s\n' "" "discover you over IPv6. Inbound IPv6 then only works"
     printf '  %-12s %s\n' "" "for peers that already know you."
+  elif [[ "${ipv6}" = "true" ]]; then
+    printf '  %-12s %s\n' "IPv6" "no address advertised yet"
   fi
   printf '  %-12s %s\n' "CGNAT" "${cgnat}"
   printf '  %-12s %s\n' "Dual-stack" "${dual_stack}"
