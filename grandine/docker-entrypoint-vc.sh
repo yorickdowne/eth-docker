@@ -104,6 +104,18 @@ else
   __graffiti_args=()
 fi
 
+# Traces
+if [[ "${COMPOSE_FILE}" =~ (grafana\.yml|grafana-rootless\.yml) ]]; then
+  __trace="--telemetry-metrics-url http://tempo:4317 --telemetry-service-name grandine-vc --telemetry-level ${LOG_LEVEL:-info}"
+# These may become default in future. Here so Grandine doesn't murder itself in the meantime
+  export OTEL_TRACES_SAMPLER=parentbased_traceidratio
+  export OTEL_TRACES_SAMPLER_ARG=0.01
+  export OTEL_EXPORTER_OTLP_INSECURE=true
+  export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+else
+  __trace=""
+fi
+
 # Word splitting is desired for the command line parameters
 # shellcheck disable=SC2086
-exec "$@" ${__network} ${__w3s_url} "${__graffiti_args[@]}" ${__epbs} ${__doppel} ${VC_EXTRAS}
+exec "$@" ${__network} ${__w3s_url} "${__graffiti_args[@]}" ${__trace} ${__epbs} ${__doppel} ${VC_EXTRAS}
