@@ -44,19 +44,8 @@ fi
 
 # Adjust RIGHT after Glamsterdam
 # Check whether we should use ePBS
-if [[ "${MEV_BOOST}" = "true" || "${EPBS_BUILDERS}" = "true" ]]; then
-  if [[ "${MEV_BOOST}" = "true" ]]; then
-    echo "MEV Boost enabled"
-    if [[ "${EPBS_BUILDERS}" = "false" ]]; then
-      echo "ePBS builders are meant to be disabled, but MEV Boost is true, which will enable them anyway."
-      echo "Update Eth Docker again after mainnet Glamsterdam hard fork, expected December 2026, to fix this."
-    else
-      echo "Update Eth Docker again after mainnet Glamsterdam hard fork, expected December 2026, to remove MEV Boost."
-    fi
-  fi
-  if [[ "${EPBS_BUILDERS}" = "true" ]]; then
-    echo "ePBS builders enabled"
-  fi
+if [[ "${MEV_BOOST}" = "true" ]]; then
+  echo "MEV Boost enabled"
   build_factor="$(__normalize_int "${EPBS_BUILD_FACTOR}")"
   case "${build_factor}" in
     0)
@@ -80,9 +69,6 @@ if [[ "${MEV_BOOST}" = "true" || "${EPBS_BUILDERS}" = "true" ]]; then
       echo "WARNING: EPBS_BUILD_FACTOR has an invalid value of \"${build_factor}\""
       ;;
   esac
-  if [[ -n "${EPBS_BUILDER_URLS}" ]]; then
-    __epbs+=" --builder-url ${EPBS_BUILDER_URLS}"
-  fi
 else
   __epbs="--default-builder-boost-factor 0"
   echo "Build blocks locally, use ePBS builders as fallback."
