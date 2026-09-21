@@ -41,7 +41,11 @@ proc expect_or_fail {pattern procname {t ""}} {
     set ::timeout $old_timeout
 }
 
-proc expect_optional {pattern procname {t ""}} {
+# An optional prompt may not appear at all. Rather than wait out the whole timeout when it
+# does not, also watch for the prompt that follows it. -notransfer leaves that match in the
+# buffer, so the caller's next expect_or_fail still sees it. The timeout is then only ever
+# reached when something has genuinely hung.
+proc expect_optional {pattern procname next_pattern {t ""}} {
     set old_timeout $::timeout
     if {$t ne ""} {
         set ::timeout $t
@@ -50,6 +54,7 @@ proc expect_optional {pattern procname {t ""}} {
         $pattern {
             $procname
         }
+        -notransfer $next_pattern {}
         timeout {}
         eof {
             puts "Unexpected EOF while waiting for optional: $pattern"
@@ -65,7 +70,17 @@ proc expect_eof {{t ""}} {
         set ::timeout $t
     }
     expect {
-        eof {}
+        eof {
+            set wait_result [wait]
+            if {[lindex $wait_result 2] != 0} {
+                puts "Error waiting for ethd: [lindex $wait_result 3]"
+                exit 1
+            }
+            if {[lindex $wait_result 3] != 0} {
+                puts "ethd exited with status [lindex $wait_result 3]"
+                exit 1
+            }
+        }
         timeout {
             if {$t ne ""} {
                 puts "Timeout waiting for EOF"
@@ -77,10 +92,10 @@ proc expect_eof {{t ""}} {
 }
 
 proc default-deployment {} {
-    expect_or_fail "Select Network" accept_default
+    expect_or_fail "Select Network" accept_default $::startup_timeout
     expect_or_fail "Select deployment type" accept_default
     expect_or_fail "Select consensus client" accept_default
-    expect_optional "Web3signer" yes 5
+    expect_optional "Web3signer" yes "Select execution client"
     expect_or_fail "Select execution client" accept_default
     expect_or_fail "Select execution layer history" accept_default
 }
@@ -93,13 +108,15 @@ proc all-defaults {} {
     expect_or_fail "MEV Boost" yes
     expect_or_fail "Relays list" accept_default
     expect_or_fail "ePBS Builders" yes
-    expect_optional "ePBS Build Factor" yes 30
+    # This prompt waits on speedtest-cli in __query_epbs_build_factor, which took 31.5s
+    # when measured. On macOS the speed test is skipped and "Grafana" arrives at once.
+    expect_optional "ePBS Build Factor" yes "Grafana" 45
     expect_or_fail "Grafana" yes
     expect_or_fail "Configure rewards address" address
     expect_or_fail "Configure Graffiti" accept_default
     expect_or_fail "Default Graffiti" yes
 
-    expect_eof 15
+    expect_eof $::finish_timeout
 }
 
 # Called after all-defaults, existing .env
@@ -114,7 +131,7 @@ proc no-epbs {} {
     expect_or_fail "Configure Graffiti" accept_default
     expect_or_fail "Default Graffiti" yes
 
-    expect_eof 15
+    expect_eof $::finish_timeout
 }
 
 # Called after all-defaults, existing .env
@@ -125,16 +142,26 @@ proc no-grafana {} {
     expect_or_fail "MEV Boost" yes
     expect_or_fail "Relays list" accept_default
     expect_or_fail "ePBS Builders" yes
-    expect_optional "ePBS Build Factor" yes 30
+    # This prompt waits on speedtest-cli in __query_epbs_build_factor, which took 31.5s
+    # when measured. On macOS the speed test is skipped and "Grafana" arrives at once.
+    expect_optional "ePBS Build Factor" yes "Grafana" 45
     expect_or_fail "Grafana" no
     expect_or_fail "Configure rewards address" accept_default
     expect_or_fail "Configure Graffiti" accept_default
     expect_or_fail "Default Graffiti" yes
 
-    expect_eof 15
+    expect_eof $::finish_timeout
 }
 
-set timeout 5
+# Between prompts ethd only runs bash, but macOS CI runners are slow
+set timeout 15
+# ethd talks to Docker and Compose several times before the first whiptail screen.
+# That is fast natively and slow through Colima on macOS.
+set startup_timeout 120
+# After the last prompt, __detect_v6 creates a Docker network and runs a container
+set finish_timeout 120
+# Pin the pty size rather than relying on newt's fallback
+set stty_init "rows 24 columns 80"
 spawn ./ethd config --ci
 
 # Check for the command-line argument
