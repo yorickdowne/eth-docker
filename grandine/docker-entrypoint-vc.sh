@@ -46,32 +46,34 @@ fi
 # Check whether we should use ePBS
 if [[ "${MEV_BOOST}" = "true" ]]; then
   echo "MEV Boost enabled"
+  __epbs="--use-builder"
   build_factor="$(__normalize_int "${EPBS_BUILD_FACTOR}")"
   case "${build_factor}" in
     0)
-      __epbs="--default-builder-boost-factor ${build_factor}"
-      echo "Build blocks locally, use ePBS builders as fallback. EPBS_BUILD_FACTOR is 0."
+      __epbs+=" --default-builder-boost-factor ${build_factor}"
+      #echo "Build blocks locally, use ePBS builders as fallback. EPBS_BUILD_FACTOR is 0."
+      echo "Build blocks locally. EPBS_BUILD_FACTOR is 0."
       ;;
     [1-9]|[1-9][0-9])
-      __epbs="--default-builder-boost-factor ${build_factor}"
-      echo "Enabled MEV Build Factor of ${build_factor}"
+      __epbs+=" --default-builder-boost-factor ${build_factor}"
+      echo "Enabled PBS Build Factor of ${build_factor}"
       ;;
     100)
-      __epbs="--default-builder-boost-factor 18446744073709551615"
-      echo "Always prefer ePBS builder blocks, EPBS_BUILD_FACTOR 100"
+      __epbs+=" --default-builder-boost-factor 18446744073709551615"
+      #echo "Always prefer ePBS builder blocks, EPBS_BUILD_FACTOR 100"
+      echo "Always prefer PBS builder blocks, EPBS_BUILD_FACTOR 100"
       ;;
     "")
-      __epbs=""
       echo "Use default --default-builder-boost-factor"
       ;;
     *)
-      __epbs=""
       echo "WARNING: EPBS_BUILD_FACTOR has an invalid value of \"${build_factor}\""
       ;;
   esac
 else
-  __epbs="--default-builder-boost-factor 0"
-  echo "Build blocks locally, use ePBS builders as fallback."
+#  __epbs="--default-builder-boost-factor 0"
+#  echo "Build blocks locally, use ePBS builders as fallback."
+  __epbs=""
 fi
 
 # Check whether we should enable doppelganger protection
