@@ -472,8 +472,7 @@ graffiti-set() {
     __http_method=POST
     __call_api
     case "${__code}" in
-# The spec asks for 202. Prysm answers 200 and Teku 204; drop those once they are fixed.
-      200|202|204) echo "The graffiti for the validator with public key ${__pubkey} was updated."; (( updated+=1 ));;
+      202) echo "The graffiti for the validator with public key ${__pubkey} was updated."; (( updated+=1 ));;
       400) echo "The pubkey or graffiti was formatted wrong. Error: $(__print_jq_message "${__result}" '.message')"; (( failed+=1 ));;
       401) echo "No authorization token found. This is a bug. Error: $(__print_jq_message "${__result}" '.message')"; exit 70;;
       403) echo "The authorization token is invalid. Error: $(__print_jq_message "${__result}" '.message')"; exit 1;;
@@ -798,14 +797,6 @@ __parse_builder_args() {
 }
 
 
-# Prysm answers any path it does not serve with 200 and an empty body, instead of 404. For the
-# builder configuration API an empty 200 therefore means "not served", as a 404 would.
-# Drop this once Prysm is fixed.
-__builder_empty_as_unserved() {
-  if [[ "${__code}" = "200" && -z "${__result//[[:space:]]/}" ]]; then
-    __code=501
-  fi
-}
 
 
 builder-get() {
@@ -823,7 +814,6 @@ builder-get() {
     __api_data=""
     __http_method=GET
     __call_api
-    __builder_empty_as_unserved
     case "${__code}" in
       200)
         if [[ "${__json_out}" -eq 1 ]]; then
@@ -898,7 +888,6 @@ builder-set() {
       __api_data=""
       __http_method=GET
       __call_api
-      __builder_empty_as_unserved
       case "${__code}" in
         200) echo "${__result}" | jq '.data' >/tmp/builder-current.json;;
         404) echo '{}' >/tmp/builder-current.json;;
@@ -919,7 +908,6 @@ builder-set() {
     __api_data=@/tmp/apidata.txt
     __http_method=POST
     __call_api
-    __builder_empty_as_unserved
     case "${__code}" in
       202)
         echo "The builder configuration for the validator with public key ${__pubkey} was updated."
@@ -957,7 +945,6 @@ builder-delete() {
     __api_data=""
     __http_method=DELETE
     __call_api
-    __builder_empty_as_unserved
     case "${__code}" in
       204) echo "The builder configuration for the validator with public key ${__pubkey} was removed, and it follows EPBS_* in .env again."; (( deleted++ ));;
       400) echo "The pubkey was formatted wrong. Error: $(__print_jq_message "${__result}" '.message')"; exit 1;;
