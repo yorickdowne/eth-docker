@@ -602,8 +602,33 @@ __builder_boost_factor_value() {
 # Build the patch document from the command line arguments
 __builder_patch() {
   local urls
+  local entries
+  local entry
+  local url
+  local auth
+  local hex
 
   urls=${__builder_urls}
+# URL#auth_data sets auth data. The spec only allows 0x<hex>, so hex-encode anything else for the user
+  if [[ -n "${urls}" && "${urls}" != "none" ]]; then
+    IFS=',' read -ra entries <<< "${urls}"
+    urls=""
+    for entry in "${entries[@]}"; do
+      if [[ "${entry}" == *#* ]]; then
+        url=${entry%%#*}
+        url=${url#"${url%%[![:space:]]*}"}
+        auth=${entry#*#}
+        auth=${auth%"${auth##*[![:space:]]}"}
+        if [[ -n "${auth}" && "${auth}" != 0x* ]]; then
+          hex=0x$(printf '%s' "${auth}" | od -An -tx1 -v | tr -d ' \n')
+          echo "The auth data \"${auth}\" for ${url} was converted to ${hex}."
+          echo "The keymanager API spec only supports auth data as 0x followed by hex."
+          entry="${url}#${hex}"
+        fi
+      fi
+      urls+="${entry},"
+    done
+  fi
   if [[ -n "${__min_bid}" ]]; then
     __builder_min_bid_to_gwei
   fi
@@ -617,7 +642,8 @@ __builder_patch() {
       elif $urls != "" then .builders = ($urls | split(",")
                                           | map(sub("^\\s+";"") | sub("\\s+$";""))
                                           | map(select(length > 0))
-                                          | map({url: .}))
+                                          | map(capture("^(?<url>[^#]*)(?:#(?<auth_data>.*))?$")
+                                                | if .auth_data == null then del(.auth_data) else . end))
       else . end
     | if $min_bid != "" then .min_bid = $min_bid else . end
     | if $boost != "" then .builder_boost_factor = $boost else . end' >/tmp/builder-patch.json
