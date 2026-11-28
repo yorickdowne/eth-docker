@@ -54,7 +54,7 @@ jobs:
             {"label": "test-teku", "files": "teku.yml:geth.yml"},
             {"label": "test-grandine", "files": "grandine-allin1.yml:geth.yml", "grandine_wallet": true},
             {"label": "test-vero", "files": "nimbus-cl-only.yml:vero-vc-only.yml:geth.yml", "w3s_only": true,
-             "env": ["VERO_DOCKER_TAG=master"]},
+             "env": ["VERO_DOCKER_TAG=master", "VC_EXTRAS=--ignore-spec-mismatch"]},
             {"label": "test-grandine-plugin", "files": "grandine-plugin-allin1.yml:nethermind.yml",
              "grandine_wallet": true,
              "cl_service": "execution", "beacon_wait": 600,
